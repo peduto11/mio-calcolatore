@@ -4,39 +4,37 @@ import pandas as pd
 import numpy as np
 
 # Configurazione Pagina
-st.set_page_config(page_title="Correct Score & Multigol PRO", layout="wide")
+st.set_page_config(page_title="Correct Score PRO", layout="wide")
 
-# --- CSS PER LOOK "DARK PREMIUM" ---
+# --- CSS PER LOOK PROFESSIONALE (DARK THEME) ---
 st.markdown("""
     <style>
-    .main { background-color: #000000; color: #ffffff; }
-    [data-testid="stSidebar"] { background-color: #111111; border-right: 1px solid #333; }
-    .stMetric { background-color: #1a1a1a; border-radius: 10px; padding: 15px; border: 1px solid #333; }
-    h1, h2, h3 { color: #00ff88; font-family: 'Segoe UI', sans-serif; }
-    .stDataFrame { border: 1px solid #333; border-radius: 10px; }
-    div[data-testid="stExpander"] { background-color: #111111; border: 1px solid #333; }
+    .stApp { background-color: #0e1117; color: white; }
+    .stMetric { background-color: #1f2937 !important; border-radius: 10px; padding: 15px; border: 1px solid #374151; color: white !important; }
+    [data-testid="stSidebar"] { background-color: #111827; }
+    h1, h2, h3 { color: #00ff88 !important; }
+    .stDataFrame { border: 1px solid #374151; border-radius: 10px; }
     </style>
-    """, unsafe_content_as_html=True)
+    """, unsafe_allow_html=True)
 
 def poisson_probability(lmbda, x):
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
-st.title("⚽ Correct Score & Multigol PRO")
+st.title("🏆 Correct Score & Multigol Predictor")
 st.write("Analisi statistica basata sulla distribuzione di Poisson")
 
 # --- INPUT DATI ---
-st.sidebar.header("📊 Parametri Squadre")
-casa_gol = st.sidebar.number_input("Gol Fatti Casa (Totali)", value=25)
+st.sidebar.header("📊 Dati Squadre")
+casa_gol = st.sidebar.number_input("Gol Fatti Casa (Totali)", value=20)
 casa_match = st.sidebar.number_input("Partite Casa", value=10)
 st.sidebar.markdown("---")
-ospite_gol = st.sidebar.number_input("Gol Fatti Ospite (Totali)", value=18)
+ospite_gol = st.sidebar.number_input("Gol Fatti Ospite (Totali)", value=15)
 ospite_match = st.sidebar.number_input("Partite Ospite", value=10)
 
 media_casa = casa_gol / casa_match if casa_match > 0 else 0
 media_ospite = ospite_gol / ospite_match if ospite_match > 0 else 0
 
-st.sidebar.success(f"Media Casa: {media_casa:.2f}")
-st.sidebar.warning(f"Media Ospite: {media_ospite:.2f}")
+st.sidebar.info(f"Media Casa: {media_casa:.2f} | Media Ospite: {media_ospite:.2f}")
 
 # --- CALCOLO MATRICE ---
 max_goals = 6 
@@ -52,7 +50,7 @@ for h in range(max_goals):
 col_mat, col_val = st.columns([2, 1])
 
 with col_mat:
-    st.subheader("📊 Matrice Probabilità")
+    st.subheader("🖼️ Matrice Probabilità")
     df_matrix = pd.DataFrame(matrix * 100, 
                              index=[f"Casa {i}" for i in range(max_goals)], 
                              columns=[f"Ospite {i}" for i in range(max_goals)])
@@ -69,23 +67,24 @@ with col_val:
     df_res = pd.DataFrame(risultati).sort_values(by="Probabilità", ascending=False)
     st.dataframe(df_res.head(10).style.format({"Probabilità": "{:.2f}%", "Quota Fair": "{:.2f}"}), hide_index=True, use_container_width=True)
 
-# --- MERCATI 1X2 ---
+# --- MERCATI PRINCIPALI (1X2, Over) ---
 st.markdown("---")
-st.subheader("📈 Esito Finale 1X2 & Doppia Chance")
+st.subheader("📈 Esito Finale 1X2 & Over")
 m1, m2, m3, m4 = st.columns(4)
 
 p_1 = np.sum(np.tril(matrix, -1)) * 100
 p_x = np.trace(matrix) * 100
 p_2 = np.sum(np.triu(matrix, 1)) * 100
+over_25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
 
-m1.metric("Segno 1", f"{p_1:.1f}%", f"Fair: {100/p_1:.2f}")
-m2.metric("Segno X", f"{p_x:.1f}%", f"Fair: {100/p_x:.2f}")
-m3.metric("Segno 2", f"{p_2:.1f}%", f"Fair: {100/p_2:.2f}")
-m4.metric("1X DC", f"{(p_1+p_x):.1f}%", f"Fair: {100/(p_1+p_x):.2f}")
+m1.metric("Segno 1", f"{p_1:.1f}%", f"Quota: {100/p_1:.2f}")
+m2.metric("Segno X", f"{p_x:.1f}%", f"Quota: {100/p_x:.2f}")
+m3.metric("Segno 2", f"{p_2:.1f}%", f"Quota: {100/p_2:.2f}")
+m4.metric("Over 2.5", f"{over_25:.1f}%", f"Quota: {100/over_25:.2f}")
 
-# --- SEZIONE MULTIGOL COMPLETA ---
-st.markdown("---")
-st.subheader("🔢 Sezione Multigol Generali")
+# --- SEZIONE MULTIGOL ---
+st.subheader("🔢 Sezione Multigol")
+mg_col1, mg_col2, mg_col3, mg_col4 = st.columns(4)
 
 def calc_mg(min_g, max_g):
     prob = 0
@@ -96,45 +95,30 @@ def calc_mg(min_g, max_g):
                 prob += matrix[h, a]
     return prob * 100
 
-g1, g2, g3, g4 = st.columns(4)
-multigols = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
-cols = [g1, g2, g3, g4, g1, g2, g3, g4]
+# Calcolo Multigol
+mg12 = calc_mg(1, 2)
+mg13 = calc_mg(1, 3)
+mg23 = calc_mg(2, 3)
+mg24 = calc_mg(2, 4)
 
-for i, (min_g, max_g) in enumerate(multigols):
-    p = calc_mg(min_g, max_g)
-    cols[i].metric(f"Multigol {min_g}-{max_g}", f"{p:.1f}%", f"Fair: {100/p:.2f}")
+mg_col1.metric("Multigol 1-2", f"{mg12:.1f}%", f"Quota: {100/mg12:.2f}")
+mg_col2.metric("Multigol 1-3", f"{mg13:.1f}%", f"Quota: {100/mg13:.2f}")
+mg_col3.metric("Multigol 2-3", f"{mg23:.1f}%", f"Quota: {100/mg23:.2f}")
+mg_col4.metric("Multigol 2-4", f"{mg24:.1f}%", f"Quota: {100/mg24:.2f}")
 
-# --- MULTIGOL CASA E OSPITE ---
+# Seconda riga Multigol
+st.write("")
+mg_col5, mg_col6, mg_col7, mg_col8 = st.columns(4)
+mg14 = calc_mg(1, 4)
+mg25 = calc_mg(2, 5)
+mg34 = calc_mg(3, 4)
+mg35 = calc_mg(3, 5)
+
+mg_col5.metric("Multigol 1-4", f"{mg14:.1f}%", f"Quota: {100/mg14:.2f}")
+mg_col6.metric("Multigol 2-5", f"{mg25:.1f}%", f"Quota: {100/mg25:.2f}")
+mg_col7.metric("Multigol 3-4", f"{mg34:.1f}%", f"Quota: {100/mg34:.2f}")
+mg_col8.metric("Multigol 3-5", f"{mg35:.1f}%", f"Quota: {100/mg35:.2f}")
+
+# --- DOPPIA CHANCE ---
 st.markdown("---")
-st.subheader("🏠 Multigol Squadre")
-c1, c2 = st.columns(2)
-
-with c1:
-    st.write("**MULTIGOL CASA**")
-    for mg in [(1,2), (1,3), (2,3)]:
-        prob = sum(prob_casa[i] for i in range(mg[0], mg[1]+1)) * 100
-        st.write(f"Variazione {mg[0]}-{mg[1]}: **{prob:.1f}%** | Quota: **{100/prob:.2f}**")
-
-with c2:
-    st.write("**MULTIGOL OSPITE**")
-    for mg in [(1,2), (1,3), (2,3)]:
-        prob = sum(prob_ospite[i] for i in range(mg[0], mg[1]+1)) * 100
-        st.write(f"Variazione {mg[0]}-{mg[1]}: **{prob:.1f}%** | Quota: **{100/prob:.2f}**")
-
-# --- UNDER/OVER ---
-st.markdown("---")
-st.subheader("⚽ Mercati Gol")
-o1, o2, o3, o4 = st.columns(4)
-
-over05 = (1 - matrix[0,0]) * 100
-over15 = (1 - (matrix[0,0] + matrix[1,0] + matrix[0,1])) * 100
-over25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
-goal = 0
-for h in range(1, max_goals):
-    for a in range(1, max_goals):
-        goal += matrix[h, a]
-
-o1.metric("Over 0.5", f"{over05:.1f}%")
-o2.metric("Over 1.5", f"{over15:.1f}%")
-o3.metric("Over 2.5", f"{over25:.1f}%")
-o4.metric("Goal/Entrambi", f"{goal*100:.1f}%")
+st.write(f"**Doppia Chance:** 1X: {(p_1+p_x):.1f}% (Q: {100/(p_1+p_x):.2f}) | X2: {(p_2+p_x):.1f}% (Q: {100/(p_2+p_x):.2f}) | 12: {(p_1+p_2):.1f}% (Q: {100/(p_1+p_2):.2f})")
