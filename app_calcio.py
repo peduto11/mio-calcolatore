@@ -4,15 +4,23 @@ import pandas as pd
 import numpy as np
 
 # Configurazione Pagina
-st.set_page_config(page_title="AI Football Predictor Master", layout="wide")
+st.set_page_config(page_title="AI Betting Predictor", layout="wide")
 
-# --- CSS PER LOOK PULITO ---
+# --- CSS PER LOOK PULITO E COMPATTO ---
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; color: #000000; }
-    .stMetric { border: 1px solid #d1d5db !important; padding: 8px !important; border-radius: 8px; background-color: #f9fafb !important; }
-    h1, h2, h3 { color: #1e293b !important; margin-top: 0px; }
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
+    h1, h2, h3 { color: #1e293b !important; margin-top: -10px; }
+    /* Rimpicciolisce le schede scenario */
+    div[data-testid="stMetric"] {
+        background-color: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stMetricValue"] { font-size: 18px !important; }
+    div[data-testid="stMetricLabel"] { font-size: 13px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -20,7 +28,7 @@ def poisson(lmbda, x):
     if lmbda <= 0: return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
-st.title("⚽ AI Predictor: Risultati & Scenari Vivi")
+st.title("⚽ Predictor Risultati & Multigol PRO")
 
 # --- SIDEBAR INPUT ---
 st.sidebar.header("🏠 DATI CASA")
@@ -30,9 +38,7 @@ c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (Ultime 5)")
 c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", value=8)
 c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", value=4)
-
 st.sidebar.markdown("---")
-
 st.sidebar.header("🚀 DATI OSPITE")
 o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", value=10)
 o_s_s = st.sidebar.number_input("Gol Subiti Ospite (Stagione)", value=18)
@@ -52,7 +58,7 @@ if c_g_s > 0 and o_g_s > 0:
 else:
     exp_c = exp_o = 0
 
-st.info(f"📊 **Baricentro Match (Medie Attese):** Casa **{exp_c:.2f}** | Ospite **{exp_o:.2f}**")
+st.info(f"📊 **Medie Gol Attese:** Casa **{exp_c:.2f}** | Ospite **{exp_o:.2f}**")
 
 # --- GENERAZIONE MATRICE ---
 max_g = 6 
@@ -61,11 +67,11 @@ for h in range(max_g):
     for a in range(max_g):
         matrix[h, a] = poisson(exp_c, h) * poisson(exp_o, a)
 
-# --- LOGICA SCENARI (RAGIONAMENTO SULLE MEDIE) ---
-s1 = (int(round(exp_c)), int(round(exp_o)))
-s2 = (int(math.ceil(exp_c)), int(math.floor(exp_o)))
-s3 = (int(math.floor(exp_c)), int(math.ceil(exp_o)))
-top_scenarios = list(set([s1, s2, s3]))
+# --- LOGICA SCENARI (RAGIONAMENTO) ---
+s1 = f"{int(round(exp_c))}-{int(round(exp_o))}"
+s2 = f"{int(math.ceil(exp_c))}-{int(math.floor(exp_o))}"
+s3 = f"{int(math.floor(exp_c))}-{int(math.ceil(exp_o))}"
+top_scenarios_list = [s1, s2, s3]
 
 # --- LAYOUT SUPERIORE ---
 col_mat, col_res = st.columns([2, 1.2])
@@ -73,15 +79,7 @@ col_mat, col_res = st.columns([2, 1.2])
 with col_mat:
     st.subheader("📊 Matrice Probabilità")
     df_matrix = pd.DataFrame(matrix * 100, index=[f"C{i}" for i in range(max_g)], columns=[f"O{i}" for i in range(max_g)])
-    
-    # Funzione di stile corretta per evidenziare i 3 scenari
-    def apply_highlights(styler):
-        for (h, a) in top_scenarios:
-            if h < max_g and a < max_g:
-                styler.set_properties(**{'background-color': '#ffff00', 'color': 'black', 'border': '2px solid black'}, subset=(f"C{h}", f"O{a}"))
-        return styler
-
-    st.dataframe(apply_highlights(df_matrix.style.format("{:.1f}%").background_gradient(cmap='Greens')), height=245)
+    st.dataframe(df_matrix.style.format("{:.1f}%").background_gradient(cmap='Greens'), height=245)
 
 with col_res:
     st.subheader("🎯 Classifica Esatti")
@@ -90,25 +88,36 @@ with col_res:
         for a in range(max_g):
             p = matrix[h, a]
             ris.append({"Risultato": f"{h}-{a}", "Prob": p * 100, "QF": 1/p if p > 0 else 0})
+    
     df_res = pd.DataFrame(ris).sort_values(by="Prob", ascending=False).head(10)
-    df_res["Prob. %"] = df_res["Prob"].map("{:.1f}%".format)
-    df_res["QF"] = df_res["QF"].map("{:.2f}".format)
-    st.dataframe(df_res[["Risultato", "Prob. %", "QF"]], hide_index=True, height=245, use_container_width=True)
+    
+    # FORMATAZIONE CONDIZIONALE SULLA TABELLA DI DESTRA
+    def highlight_results(row):
+        if row['Risultato'] in top_scenarios_list:
+            return ['background-color: #ffff00; color: black; font-weight: bold'] * len(row)
+        return [''] * len(row)
 
-# --- I 3 SCENARI VIVI ---
-st.subheader("💡 I 3 Scenari suggeriti dal Modello")
-c_sce = st.columns(len(top_scenarios))
-for i, (h, a) in enumerate(top_scenarios):
+    df_res_styled = df_res.copy()
+    df_res_styled["Prob. %"] = df_res["Prob"].map("{:.1f}%".format)
+    df_res_styled["QF"] = df_res["QF"].map("{:.2f}".format)
+    
+    st.dataframe(df_res_styled[["Risultato", "Prob. %", "QF"]].style.apply(highlight_results, axis=1), hide_index=True, height=245, use_container_width=True)
+
+# --- SCENARI PICCOLI ---
+st.subheader("💡 Scenari Suggeriti")
+c_sce = st.columns(6) # Usiamo 6 colonne per farle venire piccole
+for i, res_name in enumerate(list(set(top_scenarios_list))):
+    h, a = map(int, res_name.split('-'))
     p_sce = matrix[h, a] * 100
-    c_sce[i].metric(f"SCENARIO {i+1}: {h}-{a}", f"{p_sce:.1f}%", f"QF: {100/p_sce:.2f}")
+    c_sce[i].metric(f"SCENARIO: {res_name}", f"{p_sce:.1f}%", f"QF: {100/p_sce:.2f}")
 
 # --- MERCATI ---
-st.markdown("---")
-m_cols = st.columns(6)
+st.subheader("📈 Esito Finale, Over & Goal")
 p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
 ov25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
 p_g = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
 
+m_cols = st.columns(6)
 m_cols[0].metric("Segno 1", f"{p1:.1f}%", f"QF:{100/p1:.2f}")
 m_cols[1].metric("Segno X", f"{px:.1f}%", f"QF:{100/px:.2f}")
 m_cols[2].metric("Segno 2", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
