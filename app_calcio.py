@@ -62,7 +62,7 @@ with col_val:
                 })
     
     df_res = pd.DataFrame(risultati).sort_values(by="Probabilità", ascending=False)
-    st.table(df_res.head(10).style.format({"Probabilità": "{:.2f}%", "Quota Fair": "{:.2f}"}))
+    st.dataframe(df_res.head(10).style.format({"Probabilità": "{:.2f}%", "Quota Fair": "{:.2f}"}), hide_index=True, use_container_width=True)
 
 # --- MERCATI ACCESSORI ---
 st.subheader("📈 Altri Mercati")
