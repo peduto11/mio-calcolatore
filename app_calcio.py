@@ -4,15 +4,14 @@ import pandas as pd
 import numpy as np
 
 # Configurazione Pagina
-st.set_page_config(page_title="AI Predictor Master", layout="wide")
+st.set_page_config(page_title="AI Football Predictor Master", layout="wide")
 
-# --- CSS PER LOOK PROFESSIONALE E HIGHLIGHT ---
+# --- CSS PER LOOK PULITO ---
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; color: #000000; }
     .stMetric { border: 1px solid #d1d5db !important; padding: 8px !important; border-radius: 8px; background-color: #f9fafb !important; }
     h1, h2, h3 { color: #1e293b !important; margin-top: 0px; }
-    /* Nasconde catenine */
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
     </style>
     """, unsafe_allow_html=True)
@@ -42,7 +41,7 @@ st.sidebar.subheader("🔥 Forma (Ultime 5)")
 o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", value=3)
 o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", value=9)
 
-# --- CALCOLO MEDIE PESATE (FORMA 60% - STORIA 40%) ---
+# --- CALCOLO MEDIE PESATE ---
 def weighted(s_f, r_5, g_s):
     if g_s <= 0: return 0
     return ((s_f / g_s) * 0.4) + ((r_5 / 5) * 0.6)
@@ -53,24 +52,20 @@ if c_g_s > 0 and o_g_s > 0:
 else:
     exp_c = exp_o = 0
 
-# --- BARICENTRO ---
-st.info(f"📊 **Medie Gol Attese (Baricentro):** Casa **{exp_c:.2f}** | Ospite **{exp_o:.2f}**")
+st.info(f"📊 **Baricentro Match (Medie Attese):** Casa **{exp_c:.2f}** | Ospite **{exp_o:.2f}**")
 
-# --- MATRICE ---
+# --- GENERAZIONE MATRICE ---
 max_g = 6 
 matrix = np.zeros((max_g, max_g))
 for h in range(max_g):
     for a in range(max_g):
         matrix[h, a] = poisson(exp_c, h) * poisson(exp_o, a)
 
-# --- LOGICA "RAGIONATA" PER GLI SCENARI ---
-# Scenario 1: Il baricentro puro (Arrotondato)
+# --- LOGICA SCENARI (RAGIONAMENTO SULLE MEDIE) ---
 s1 = (int(round(exp_c)), int(round(exp_o)))
-# Scenario 2: Trazione offensiva (se una media è alta) o Pareggio
 s2 = (int(math.ceil(exp_c)), int(math.floor(exp_o)))
-# Scenario 3: Copertura (under) o sorpresa ospite
 s3 = (int(math.floor(exp_c)), int(math.ceil(exp_o)))
-top_scenarios = list(set([s1, s2, s3])) # Evitiamo duplicati
+top_scenarios = list(set([s1, s2, s3]))
 
 # --- LAYOUT SUPERIORE ---
 col_mat, col_res = st.columns([2, 1.2])
@@ -79,16 +74,14 @@ with col_mat:
     st.subheader("📊 Matrice Probabilità")
     df_matrix = pd.DataFrame(matrix * 100, index=[f"C{i}" for i in range(max_g)], columns=[f"O{i}" for i in range(max_g)])
     
-    # FORMATAZIONE CONDIZIONALE: Illumina i 3 Scenari in Giallo, il resto gradient verde
-    def highlight_cells(x):
-        df = x.copy()
-        df.loc[:,:] = '' 
+    # Funzione di stile corretta per evidenziare i 3 scenari
+    def apply_highlights(styler):
         for (h, a) in top_scenarios:
             if h < max_g and a < max_g:
-                df.iloc[h, a] = 'background-color: #ffff00; color: black; border: 2px solid black; font-weight: bold'
-        return df
+                styler.set_properties(**{'background-color': '#ffff00', 'color': 'black', 'border': '2px solid black'}, subset=(f"C{h}", f"O{a}"))
+        return styler
 
-    st.dataframe(df_matrix.style.format("{:.1f}%").background_gradient(cmap='Greens').apply(highlight_cells, axis=None), height=245)
+    st.dataframe(apply_highlights(df_matrix.style.format("{:.1f}%").background_gradient(cmap='Greens')), height=245)
 
 with col_res:
     st.subheader("🎯 Classifica Esatti")
@@ -103,7 +96,7 @@ with col_res:
     st.dataframe(df_res[["Risultato", "Prob. %", "QF"]], hide_index=True, height=245, use_container_width=True)
 
 # --- I 3 SCENARI VIVI ---
-st.subheader("💡 Analisi AI: I 3 Scenari Probabili")
+st.subheader("💡 I 3 Scenari suggeriti dal Modello")
 c_sce = st.columns(len(top_scenarios))
 for i, (h, a) in enumerate(top_scenarios):
     p_sce = matrix[h, a] * 100
