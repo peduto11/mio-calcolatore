@@ -4,23 +4,22 @@ import pandas as pd
 import numpy as np
 
 # Configurazione Pagina
-st.set_page_config(page_title="Calcolatore Scommesse", layout="wide")
+st.set_page_config(page_title="Calcolatore Scommesse PRO", layout="wide")
 
-# --- CSS PER MASSIMA LEGGIBILITÀ (SFONDO CHIARO) ---
+# --- CSS PER MASSIMA LEGGIBILITÀ ---
 st.markdown("""
     <style>
-    .main { background-color: #ffffff; }
-    h1, h2, h3 { color: #1e293b; font-family: 'Arial', sans-serif; }
-    .stMetric { border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background-color: #f8fafc; }
-    .stDataFrame { border: 1px solid #e2e8f0; }
+    .stApp { background-color: #ffffff; color: #000000; }
+    h1, h2, h3 { color: #1e293b !important; }
+    .stMetric { border: 1px solid #d1d5db !important; padding: 10px; border-radius: 8px; background-color: #f9fafb !important; }
+    div[data-testid="stMetricValue"] { color: #000000 !important; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 def poisson_probability(lmbda, x):
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
-st.title("⚽ Predictor Risultati & Multigol")
-st.write("Inserisci i dati delle squadre nella barra a sinistra per calcolare le probabilità.")
+st.title("⚽ Predictor Completo: Risultati, Over & Multigol")
 
 # --- INPUT DATI (Barra laterale) ---
 st.sidebar.header("📊 Dati Squadre")
@@ -54,7 +53,6 @@ with col_mat:
     df_matrix = pd.DataFrame(matrix * 100, 
                              index=[f"Casa {i}" for i in range(max_goals)], 
                              columns=[f"Ospite {i}" for i in range(max_goals)])
-    # Colori verdi chiari per le celle più probabili
     st.dataframe(df_matrix.style.format("{:.2f}%").background_gradient(cmap='Greens'))
 
 with col_val:
@@ -68,23 +66,31 @@ with col_val:
     df_res = pd.DataFrame(risultati).sort_values(by="Probabilità", ascending=False)
     st.dataframe(df_res.head(10).style.format({"Probabilità": "{:.2f}%", "Quota Fair": "{:.2f}"}), hide_index=True, use_container_width=True)
 
-# --- ESITO FINALE 1X2 ---
+# --- ESITO FINALE 1X2 E GOAL ---
 st.markdown("---")
-st.subheader("📈 Esito Finale & Over")
-m1, m2, m3, m4 = st.columns(4)
+st.subheader("📈 Mercati Principali & Goal/NoGoal")
+m1, m2, m3, m4, m5 = st.columns(5)
 
 p_1 = np.sum(np.tril(matrix, -1)) * 100
 p_x = np.trace(matrix) * 100
 p_2 = np.sum(np.triu(matrix, 1)) * 100
 over_25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
 
-m1.metric("Segno 1", f"{p_1:.1f}%", f"Fair Q: {100/p_1:.2f}")
-m2.metric("Segno X", f"{p_x:.1f}%", f"Fair Q: {100/p_x:.2f}")
-m3.metric("Segno 2", f"{p_2:.1f}%", f"Fair Q: {100/p_2:.2f}")
-m4.metric("Over 2.5", f"{over_25:.1f}%", f"Fair Q: {100/over_25:.2f}")
+# Calcolo Goal (Entrambi segnano)
+p_goal = 0
+for h in range(1, max_goals):
+    for a in range(1, max_goals):
+        p_goal += matrix[h, a]
+p_goal = p_goal * 100
+
+m1.metric("Segno 1", f"{p_1:.1f}%", f"Q: {100/p_1:.2f}")
+m2.metric("Segno X", f"{p_x:.1f}%", f"Q: {100/p_x:.2f}")
+m3.metric("Segno 2", f"{p_2:.1f}%", f"Q: {100/p_2:.2f}")
+m4.metric("Over 2.5", f"{over_25:.1f}%", f"Q: {100/over_25:.2f}")
+m5.metric("GOAL (GG)", f"{p_goal:.1f}%", f"Q: {100/p_goal:.2f}")
 
 # --- SEZIONE MULTIGOL ---
-st.subheader("🔢 Sezione Multigol")
+st.subheader("🔢 Sezione Multigol Partita")
 
 def calc_mg(min_g, max_g):
     prob = 0
@@ -96,7 +102,6 @@ def calc_mg(min_g, max_g):
     return prob * 100
 
 g1, g2, g3, g4 = st.columns(4)
-# Multigol da visualizzare
 m_list = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
 cols = [g1, g2, g3, g4, g1, g2, g3, g4]
 
@@ -104,6 +109,19 @@ for i, (low, high) in enumerate(m_list):
     p = calc_mg(low, high)
     cols[i].metric(f"Multigol {low}-{high}", f"{p:.1f}%", f"Fair Q: {100/p:.2f}")
 
-# --- DOPPIA CHANCE ---
+# --- MULTIGOL SQUADRA ---
 st.markdown("---")
-st.write(f"**Doppia Chance:** 1X: **{(p_1+p_x):.1f}%** | X2: **{(p_2+p_x):.1f}%** | 12: **{(p_1+p_2):.1f}%**")
+st.subheader("🏠 Multigol Squadra (Casa e Ospite)")
+c1, c2 = st.columns(2)
+
+with c1:
+    st.write("**CASA**")
+    for low, high in [(1,2), (1,3), (2,3)]:
+        p = sum(prob_casa[i] for i in range(low, high+1)) * 100
+        st.write(f"Multigol Casa {low}-{high}: **{p:.1f}%** | Quota: **{100/p:.2f}**")
+
+with c2:
+    st.write("**OSPITE**")
+    for low, high in [(1,2), (1,3), (2,3)]:
+        p = sum(prob_ospite[i] for i in range(low, high+1)) * 100
+        st.write(f"Multigol Ospite {low}-{high}: **{p:.1f}%** | Quota: **{100/p:.2f}**")
