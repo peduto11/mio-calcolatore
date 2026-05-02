@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 # Configurazione Pagina
-st.set_page_config(page_title="AI Betting Predictor PRO", layout="wide")
+st.set_page_config(page_title="FT SCORE DETECTOR PRO", layout="wide")
 
 # --- CSS INTELLIGENTE PER DARK & LIGHT MODE ---
 st.markdown("""
@@ -32,7 +32,7 @@ def poisson(lmbda, x):
     if lmbda <= 0: return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
-st.title("⚽ Predictor Risultati & Multigol PRO")
+st.title("⚽ FT SCORE DETECTOR & MULTIGOL PRO")
 
 # --- SIDEBAR INPUT ---
 st.sidebar.header("🏠 DATI CASA")
