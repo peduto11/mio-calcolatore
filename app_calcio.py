@@ -6,7 +6,7 @@ import numpy as np
 # Configurazione Pagina
 st.set_page_config(page_title="FT SCORE & BVS 2026 PRO", layout="wide")
 
-# --- CSS PER LOOK PROFESSIONALE E COMPATTO ---
+# --- CSS INTELLIGENTE ---
 st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
@@ -16,10 +16,8 @@ st.markdown("""
         border: 1px solid rgba(128, 128, 128, 0.2) !important;
         padding: 10px !important;
         border-radius: 10px !important;
-        margin-bottom: 5px !important;
     }
-    div[data-testid="stMetricValue"] { font-size: 24px !important; font-weight: bold !important; }
-    .value-box { padding: 20px; border-radius: 10px; border: 2px solid #00ff88; background-color: rgba(0, 255, 136, 0.1); text-align: center; }
+    div[data-testid="stMetricValue"] { font-size: 20px !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -27,7 +25,7 @@ def poisson(lmbda, x):
     if lmbda <= 0: return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
-st.title("⚽ FT SCORE DETECTOR & BVS 2026 PRO")
+st.title("⚽ FT SCORE DETECTOR & MULTIGOL PRO")
 
 # --- SIDEBAR UNICA ---
 st.sidebar.header("🏠 DATI CASA")
@@ -37,6 +35,7 @@ c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
 c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", value=8)
 c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", value=4)
+
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 DATI OSPITE")
 o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", value=10)
@@ -45,22 +44,22 @@ o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
 o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", value=3)
 o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", value=9)
+
 st.sidebar.markdown("---")
 st.sidebar.header("💰 QUOTE BOOKMAKER")
-q1_b = st.sidebar.number_input("Quota 1", value=2.00)
-qx_b = st.sidebar.number_input("Quota X", value=3.20)
-q2_b = st.sidebar.number_input("Quota 2", value=3.50)
+q1_b = st.sidebar.number_input("Quota 1", value=2.00, step=0.01)
+qx_b = st.sidebar.number_input("Quota X", value=3.20, step=0.01)
+q2_b = st.sidebar.number_input("Quota 2", value=3.50, step=0.01)
 
 # --- CALCOLO MEDIE ---
 def weighted(s_f, r_5, g_s):
-    if g_s <= 0: return 0
-    return ((s_f / g_s) * 0.4) + ((r_5 / 5) * 0.6)
+    return ((s_f / g_s) * 0.4) + ((r_5 / 5) * 0.6) if g_s > 0 else 0
 
 exp_c = (weighted(c_f_s, c_f_5, c_g_s) + weighted(o_s_s, o_s_5, o_g_s)) / 2
 exp_o = (weighted(o_f_s, o_f_5, o_g_s) + weighted(c_s_s, c_s_5, c_g_s)) / 2
 
 # --- TABS ---
-tab1, tab2 = st.tabs(["🎯 FT SCORE & MULTIGOL", "📊 BVS 2026 VALUE ANALYZER"])
+tab1, tab2 = st.tabs(["🎯 FT SCORE & MULTIGOL", "📊 BVS 2026 SYSTEM"])
 
 with tab1:
     st.info(f"📊 **Baricentro Match:** Casa **{exp_c:.2f}** | Ospite **{exp_o:.2f}**")
@@ -75,12 +74,12 @@ with tab1:
     s_list = [f"{int(round(exp_c))}-{int(round(exp_o))}", f"{int(math.ceil(exp_c))}-{int(math.floor(exp_o))}", f"{int(math.floor(exp_c))}-{int(math.ceil(exp_o))}"]
     top_scen = list(dict.fromkeys(s_list))
 
-    c_m1, c_m2 = st.columns([2, 1.2])
-    with c_m1:
+    col_m1, col_m2 = st.columns([2, 1.2])
+    with col_m1:
         st.subheader("📊 Matrice Probabilità")
         df_m = pd.DataFrame(matrix * 100, index=[f"C{i}" for i in range(max_g)], columns=[f"O{i}" for i in range(max_g)])
         st.dataframe(df_m.style.format("{:.1f}%").background_gradient(cmap='Greens', axis=None), height=245)
-    with c_m2:
+    with col_m2:
         st.subheader("🎯 Classifica Esatti")
         ris = []
         for h in range(max_g):
@@ -88,11 +87,10 @@ with tab1:
                 p = matrix[h, a]
                 ris.append({"Risultato": f"{h}-{a}", "Prob": p * 100, "QF": 1/p if p > 0 else 0})
         df_r = pd.DataFrame(ris).sort_values(by="Prob", ascending=False).head(10)
-        df_r["Prob. %"] = df_r["Prob"].map("{:.1f}%".format)
-        df_r["QF"] = df_r["QF"].map("{:.2f}".format)
-        st.dataframe(df_r[["Risultato", "Prob. %", "QF"]].style.apply(lambda r: ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in top_scen else ['']*3, axis=1), hide_index=True, height=245, use_container_width=True)
+        def hl(r): return ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in top_scen else ['']*3
+        st.dataframe(df_r[["Risultato", "Prob", "QF"]].style.apply(hl, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=245, use_container_width=True)
 
-    st.subheader("📈 Mercati Principali")
+    st.subheader("📈 Esito Finale, Over & Goal")
     p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
     ov25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
     p_g = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
@@ -131,48 +129,46 @@ with tab1:
         st.metric("12", f"{(p1+p2):.1f}%", f"QF:{100/(p1+p2):.2f}")
 
 with tab2:
-    st.subheader("📊 BVS 2026: Rilevatore di Valore (1X2)")
+    st.subheader("📊 Analisi Power Rating BVS 2026")
     
-    # Logica BVS specifica
+    # Logica BVS (Stagione)
     m_gf_c, m_gs_c = c_f_s/c_g_s if c_g_s>0 else 0, c_s_s/c_g_s if c_g_s>0 else 0
     m_gf_o, m_gs_o = o_f_s/o_g_s if o_g_s>0 else 0, o_s_s/o_g_s if o_g_s>0 else 0
+    
     t1 = ((m_gf_c + m_gs_o) / 2) * 25
     t2 = ((m_gf_o + m_gs_c) / 2) * 25
     tx = 107.05 - t1 - t2
+    
     b1, bx, b2 = t1*(106/107.05), tx*(106/107.05), t2*(106/107.05)
     qf1, qfx, qf2 = 100/b1, 100/bx, 100/b2
 
-    # Visualizzazione a Schede (Cards)
-    c_b1, c_bx, c_b2 = st.columns(3)
-    
-    with c_b1:
-        val1 = "✅ VALORE" if q1_b > qf1 else "❌ NO VALUE"
-        st.metric("SEGNO 1", f"{b1:.1f}%", f"QF: {qf1:.2f}")
-        st.write(f"**Bookmaker: {q1_b}**")
-        st.caption(val1)
+    # Tabella con formattazione condizionale (Verde sul max)
+    bvs_df = pd.DataFrame({
+        "Segno": ["1", "X", "2"],
+        "Probabilità Teorica": [t1, tx, t2],
+        "Probabilità BVS": [b1, bx, b2],
+        "Quota Fair BVS": [qf1, qfx, qf2],
+        "Quota Book": [q1_b, qx_b, q2_b]
+    })
 
-    with c_bx:
-        valx = "✅ VALORE" if qx_b > qfx else "❌ NO VALUE"
-        st.metric("SEGNO X", f"{bx:.1f}%", f"QF: {qfx:.2f}")
-        st.write(f"**Bookmaker: {qx_b}**")
-        st.caption(valx)
+    def highlight_max(s):
+        is_max = s == s.max()
+        return ['background-color: #dcfce7; color: #166534; font-weight: bold' if v else '' for v in is_max]
 
-    with c_b2:
-        val2 = "✅ VALORE" if q2_b > qf2 else "❌ NO VALUE"
-        st.metric("SEGNO 2", f"{b2:.1f}%", f"QF: {qf2:.2f}")
-        st.write(f"**Bookmaker: {q2_b}**")
-        st.caption(val2)
+    st.write("**Tabella di Analisi (Il verde indica il segno favorito dal modello)**")
+    st.dataframe(bvs_df.style.apply(highlight_max, subset=["Probabilità Teorica", "Probabilità BVS"]).format({
+        "Probabilità Teorica": "{:.2f}%",
+        "Probabilità BVS": "{:.2f}%",
+        "Quota Fair BVS": "{:.2f}",
+        "Quota Book": "{:.2f}"
+    }), hide_index=True, use_container_width=True)
 
-    # SENTENZA FINALE BVS
+    # Box Sentenza Finale
     st.markdown("---")
-    st.subheader("⚖️ Sentenza del Modello BVS 2026")
+    res_bvs = ["1", "X", "2"]
+    vals = [q1_b > qf1, qx_b > qfx, q2_b > qf2]
     
-    # Trova il miglior valore
-    diffs = [q1_b - qf1, qx_b - qfx, q2_b - qf2]
-    best_idx = np.argmax(diffs)
-    best_bet = ["Segno 1", "Segno X", "Segno 2"][best_idx]
-    
-    if diffs[best_idx] > 0:
-        st.success(f"🎯 **SCOMMESSA CONSIGLIATA:** Il miglior valore è sul **{best_bet}** (Vantaggio: +{diffs[best_idx]:.2f} punti di quota)")
-    else:
-        st.error("⚠️ **ATTENZIONE:** Il bookmaker ha quote troppo basse su tutti i segni. Nessun valore trovato.")
+    c_val1, c_val2, c_val3 = st.columns(3)
+    c_val1.metric("Valore Segno 1", "✅ SI" if vals[0] else "❌ NO")
+    c_val2.metric("Valore Segno X", "✅ SI" if vals[1] else "❌ NO")
+    c_val3.metric("Valore Segno 2", "✅ SI" if vals[2] else "❌ NO")
