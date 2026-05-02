@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 # Configurazione Pagina
-st.set_page_config(page_title="FT SCORE & BVS 2026 PRO", layout="wide")
+st.set_page_config(page_title="FT SCORE DETECTOR PRO", page_icon="⚽", layout="wide")
 
 # --- CSS INTELLIGENTE ---
 st.markdown("""
