@@ -19,6 +19,7 @@ st.markdown("""
         margin-bottom: 5px !important;
     }
     div[data-testid="stMetricValue"] { font-size: 18px !important; font-weight: bold !important; }
+    div[data-testid="stMetricLabel"] { font-size: 13px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -28,7 +29,7 @@ def poisson(lmbda, x):
 
 st.title("⚽ FT SCORE DETECTOR & MULTIGOL PRO")
 
-# --- SIDEBAR UNICA ---
+# --- SIDEBAR ---
 st.sidebar.header("🏠 DATI CASA")
 c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", value=15)
 c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", value=10)
@@ -46,11 +47,11 @@ o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", value=3)
 o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", value=9)
 st.sidebar.markdown("---")
 st.sidebar.header("💰 QUOTE BOOKMAKER")
-q1_b = st.sidebar.number_input("Quota 1", value=2.00)
-qx_b = st.sidebar.number_input("Quota X", value=3.20)
-q2_b = st.sidebar.number_input("Quota 2", value=3.50)
+q1_book = st.sidebar.number_input("Quota Segno 1", value=2.00)
+qx_book = st.sidebar.number_input("Quota Segno X", value=3.20)
+q2_book = st.sidebar.number_input("Quota Segno 2", value=3.50)
 
-# --- CALCOLO MEDIE PESATE ---
+# --- CALCOLO MEDIE ---
 def weighted(s_f, r_5, g_s):
     return ((s_f / (g_s if g_s>0 else 1)) * 0.4) + ((r_5 / 5) * 0.6)
 
@@ -88,53 +89,55 @@ with tab1:
         def hl(r): return ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in top_scen else ['']*3
         st.dataframe(df_r[["Risultato", "Prob", "QF"]].style.apply(hl, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=245, use_container_width=True)
 
-    # --- SCENARI COMBO DINAMICI ---
-st.subheader("🚀 Scenari Combo Multigol (Dinamici)")
-  def get_range(mu):
+    st.subheader("💡 Scenari Risultati Esatti")
+    c_sce = st.columns(4)
+    for i, res_n in enumerate(top_scen):
+        h_s, a_s = map(int, res_n.split('-'))
+        p_s = matrix[h_s, a_s] * 100
+        c_sce[i].metric(f"ESATTO: {res_n}", f"{p_s:.1f}%", f"QF: {100/p_s:.2f}")
+
+    # --- SCENARI COMBO MULTIGOL (DINAMICI E COMPLETI) ---
+    st.subheader("🚀 Scenari Combo Multigol")
+    def get_range(mu):
         if mu < 1.2: return (0, 1)
         if mu < 2.2: return (1, 3)
         return (2, 4)
 
-    r_c = get_range(exp_c)
-    r_o = get_range(exp_o)
-
+    r_c, r_o = get_range(exp_c), get_range(exp_o)
     def get_combo_p(c_r, o_r):
         return sum(matrix[h, a] for h in range(c_r[0], c_r[1]+1) for a in range(o_r[0], o_r[1]+1) if h < max_g and a < max_g) * 100
 
-    # Combo 1: Bilanciato
     p_bil = get_combo_p(r_c, r_o)
-    # Combo 2: Dominio
     if exp_c >= exp_o:
         label_dom, name_dom, p_dom = "DOMINIO CASA", f"CASA {r_c[0]}-{r_c[1]} + OSPITE 0-1", get_combo_p(r_c, (0, 1))
     else:
         label_dom, name_dom, p_dom = "DOMINIO OSPITE", f"CASA 0-1 + OSPITE {r_o[0]}-{r_o[1]}", get_combo_p((0, 1), r_o)
     
     p_goal_over = get_combo_p((1, 3), (1, 3))
-
     cc = st.columns(3)
     cc[0].metric("BILANCIATO", f"CASA {r_c[0]}-{r_c[1]} + OSPITE {r_o[0]}-{r_o[1]}", f"{p_bil:.1f}% (QF: {100/p_bil:.2f})")
     cc[1].metric(label_dom, name_dom, f"{p_dom:.1f}% (QF: {100/p_dom:.2f})")
     cc[2].metric("COMBO GOAL", "CASA 1-3 + OSPITE 1-3", f"{p_goal_over:.1f}% (QF: {100/p_goal_over:.2f})")
-    # MERCATI E MULTIGOL
+
+    # --- MERCATI ---
     st.subheader("📈 Mercati Principali")
     p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
     ov25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
-    pg, png = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100, 0
-    png = 100 - pg
+    pg = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
     mc = st.columns(6)
     mc[0].metric("Segno 1", f"{p1:.1f}%", f"QF:{100/p1:.2f}")
     mc[1].metric("Segno X", f"{px:.1f}%", f"QF:{100/px:.2f}")
     mc[2].metric("Segno 2", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
     mc[3].metric("Over 2.5", f"{ov25:.1f}%", f"QF:{100/ov25:.2f}")
     mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}")
-    mc[5].metric("NO GOAL", f"{png:.1f}%", f"QF:{100/png:.2f}")
+    mc[5].metric("NO GOAL", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
 
     st.subheader("🔢 Multigol Partita")
-    def gm(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
-    mg_l = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
+    def g_m(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
+    m_l = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
     cmg = st.columns(4)
-    for i, mg in enumerate(mg_l):
-        p = gm(mg[0], mg[1])
+    for i, mg in enumerate(m_l):
+        p = g_m(mg[0], mg[1])
         cmg[i % 4].metric(f"MG {mg[0]}-{mg[1]}", f"{p:.1f}%", f"QF:{100/p:.2f}")
 
     st.markdown("---")
@@ -165,13 +168,12 @@ with tab2:
     b1, bx, b2 = t1*(106/107.05), tx*(106/107.05), t2*(106/107.05)
     qf1, qfx, qf2 = 100/b1, 100/bx, 100/b2
     
-    # BOX VALUE BVS (COME NEL TAB 1)
     st.write("**Rilevatore di Valore (Bookmaker vs BVS)**")
     bv1, bvx, bv2 = st.columns(3)
-    bv1.metric("SEGNO 1", f"QF: {qf1:.2f}", "VALORE ✅" if q1_b > qf1 else "NO VALUE ❌")
-    bvx.metric("SEGNO X", f"QF: {qfx:.2f}", "VALORE ✅" if qx_b > qfx else "NO VALUE ❌")
-    bv2.metric("SEGNO 2", f"QF: {qf2:.2f}", "VALORE ✅" if q2_b > qf2 else "NO VALUE ❌")
+    bv1.metric("SEGNO 1", f"QF: {qf1:.2f}", "VALORE ✅" if q1_book > qf1 else "NO VALUE ❌")
+    bvx.metric("SEGNO X", f"QF: {qfx:.2f}", "VALORE ✅" if qx_book > qfx else "NO VALUE ❌")
+    bv2.metric("SEGNO 2", f"QF: {qf2:.2f}", "VALORE ✅" if q2_book > qf2 else "NO VALUE ❌")
     
     st.markdown("---")
-    bvs_df = pd.DataFrame({"Segno": ["1", "X", "2"], "Prob. Teorica": [t1, tx, t2], "Prob. BVS": [b1, bx, b2], "Quota Book": [q1_b, qx_b, q2_b]})
+    bvs_df = pd.DataFrame({"Segno": ["1", "X", "2"], "Prob. Teorica": [t1, tx, t2], "Prob. BVS": [b1, bx, b2], "Quota Book": [q1_book, qx_book, q2_book]})
     st.dataframe(bvs_df.style.highlight_max(subset=["Prob. BVS"], color="#dcfce7").format({"Prob. Teorica": "{:.2f}%", "Prob. BVS": "{:.2f}%", "Quota Book": "{:.2f}"}), hide_index=True, use_container_width=True)
