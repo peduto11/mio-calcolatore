@@ -10,13 +10,13 @@ st.set_page_config(page_title="FT SCORE DETECTOR PRO", page_icon="⚽", layout="
 if 'db_partite' not in st.session_state:
     st.session_state.db_partite = []
 
-# --- CSS PER LOOK PROFESSIONALE E COMPATTO ---
+# --- CSS PER LOOK PROFESSIONALE E TASTO GREEN ---
 st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
     h1, h2, h3 { margin-top: -20px; padding-bottom: 10px; font-size: 1.3rem !important; }
     
-    /* Stile schede piccole e leggibili */
+    /* Rimpicciolisce le schede */
     div[data-testid="stMetric"] {
         background-color: rgba(128, 128, 128, 0.05) !important;
         border: 1px solid rgba(128, 128, 128, 0.2) !important;
@@ -26,8 +26,26 @@ st.markdown("""
     div[data-testid="stMetricValue"] { font-size: 16px !important; font-weight: bold !important; }
     div[data-testid="stMetricLabel"] { font-size: 12px !important; }
     
-    /* Bottoni invio database */
-    .stButton>button { height: 26px !important; font-size: 10px !important; margin-top: 5px !important; }
+    /* TASTO SALVA GREEN PREMIUM */
+    div.stButton > button:first-child {
+        background-color: #28a745 !important;
+        color: white !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
+        border: none !important;
+        height: 42px !important;
+        width: 100% !important;
+        margin-top: 25px !important;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.15) !important;
+        transition: 0.2s;
+    }
+    div.stButton > button:hover {
+        background-color: #218838 !important;
+        transform: translateY(-2px);
+    }
+    
+    /* Pulsanti Invia e Database più discreti */
+    div.stButton > button { height: 26px !important; font-size: 10px !important; margin-top: 5px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -36,8 +54,8 @@ def poisson(lmbda, x):
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
 # --- BLOCCO SALVATAGGIO ---
-st.write("### 📝 NOME INCONTRO PER SALVATAGGIO")
-col_t1, col_t2, col_btn = st.columns([3, 3, 1])
+st.write("### 📝 REGISTRAZIONE INCONTRO")
+col_t1, col_t2, col_btn = st.columns([3, 3, 1.5])
 t_home = col_t1.text_input("Squadra Casa", value="Team A")
 t_away = col_t2.text_input("Squadra Ospite", value="Team B")
 
@@ -61,7 +79,6 @@ c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
 c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", value=8)
 c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", value=4)
-
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 DATI OSPITE")
 o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", value=10)
@@ -70,7 +87,6 @@ o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
 o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", value=3)
 o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", value=9)
-
 st.sidebar.markdown("---")
 q1_b = st.sidebar.number_input("Quota 1", value=2.00)
 qx_b = st.sidebar.number_input("Quota X", value=3.20)
@@ -110,7 +126,6 @@ with tab1:
         df_r = pd.DataFrame(ris).sort_values(by="Prob", ascending=False).head(10)
         st.dataframe(df_r.style.apply(lambda r: ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in scen else ['']*3, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=230, use_container_width=True)
 
-    # --- SCENARI ESATTI (CON QF E % SISTEMATE) ---
     st.subheader("💡 Scenari Esatti")
     cols_s = st.columns(4)
     for i, r_n in enumerate(scen):
@@ -119,8 +134,7 @@ with tab1:
             st.metric(label=f"SCENARIO", value=r_n, delta=f"{p_val:.1f}% (QF: {100/p_val:.2f})")
             if st.button(f"📌 Invia {r_n}"): salva_in_db(f"Esatto {r_n}")
 
-    # --- SCENARI COMBO (CON QF AGGIUNTA) ---
-    st.subheader("🚀 Scenari Combo Multigol")
+    st.subheader("🚀 Scenari Combo")
     def get_combo_p(c_min, c_max, o_min, o_max): return sum(matrix[h, a] for h in range(c_min, c_max+1) for a in range(o_min, o_max+1) if h<max_g and a<max_g) * 100
     r_c = (0,1) if exp_c < 1.2 else (1,3) if exp_c < 2.2 else (2,4)
     r_o = (0,1) if exp_o < 1.2 else (1,3) if exp_o < 2.2 else (2,4)
@@ -131,7 +145,7 @@ with tab1:
     p_bil = get_combo_p(r_c[0], r_c[1], r_o[0], r_o[1])
     with cb[0]:
         st.metric("BILANCIATO", name_bil, delta=f"{p_bil:.1f}% (QF: {100/p_bil:.2f})")
-        if st.button("📌 Invia Bil"): salva_in_db(f"Bil: {name_bil}")
+        if st.button("📌 Invia Bil", key="bil_btn"): salva_in_db(f"Bil: {name_bil}")
     # Dominio
     if exp_c >= exp_o:
         label_d, name_d, p_d = "DOMINIO CASA", f"CASA {r_c[0]}-{r_c[1]} + OSPITE 0-1", get_combo_p(r_c[0], r_c[1], 0, 1)
@@ -139,14 +153,13 @@ with tab1:
         label_d, name_d, p_d = "DOMINIO OSPITE", f"CASA 0-1 + OSPITE {r_o[0]}-{r_o[1]}", get_combo_p(0, 1, r_o[0], r_o[1])
     with cb[1]:
         st.metric(label_d, name_d, delta=f"{p_d:.1f}% (QF: {100/p_d:.2f})")
-        if st.button("📌 Invia Dom"): salva_in_db(f"Dom: {name_d}")
+        if st.button(f"📌 Invia {label_d}", key="dom_btn"): salva_in_db(f"Dom: {name_d}")
     # Goal
     p_go = get_combo_p(1,3,1,3)
     with cb[2]:
         st.metric("COMBO GOAL", "CASA 1-3 + OSPITE 1-3", delta=f"{p_go:.1f}% (QF: {100/p_go:.2f})")
-        if st.button("📌 Invia Goal"): salva_in_db("Combo Goal: 1-3 + 1-3")
+        if st.button("📌 Invia Goal", key="goal_btn"): salva_in_db("Combo Goal: 1-3 + 1-3")
 
-    # --- MERCATI ---
     st.subheader("📈 Mercati Principali")
     p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
     ov25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
@@ -159,7 +172,6 @@ with tab1:
     mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}")
     mc[5].metric("NO GOAL", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
 
-    # --- MULTIGOL PARTITA ---
     st.subheader("🔢 Multigol Partita")
     def gmm(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
     mg_l = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
@@ -201,7 +213,7 @@ with tab2:
     v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALORE" if q2_b > qf2 else "NO VALUE ❌")
     st.markdown("---")
     df_b = pd.DataFrame({"Segno": ["1", "X", "2"], "Prob. BVS": [b1, bx, b2], "Quota Book": [q1_b, qx_b, q2_b]})
-    st.dataframe(df_b.style.highlight_max(subset=["Prob. BVS"], color="#dcfce7").format({"Prob. BVS": "{:.2f}%"}), use_container_width=True)
+    st.dataframe(df_b.style.highlight_max(subset=["Prob. BVS"], color="#dcfce7").format({"Prob. BVS": "{:.2f}%"}), hide_index=True, use_container_width=True)
 
 with tab3:
     st.subheader("📂 Archivio Database")
@@ -209,9 +221,9 @@ with tab3:
         for i, item in enumerate(st.session_state.db_partite):
             with st.expander(f"📌 {item['Gara']} - {item['Scelta']}", expanded=True):
                 c1, c2, c3, c4 = st.columns([3, 1, 1, 0.5])
-                c1.write(f"Pronostico: **{item['Scelta']}** | Stato: **{item['Esito']}**")
-                if c2.button("WIN ✅", key=f"w_{i}"): st.session_state.db_partite[i]['Esito'] = 'VINTO 💰'; st.rerun()
-                if c3.button("LOSS ❌", key=f"l_{i}"): st.session_state.db_partite[i]['Esito'] = 'PERSO 📉'; st.rerun()
-                if c4.button("🗑️", key=f"d_{i}"): st.session_state.db_partite.pop(i); st.rerun()
+                c1.write(f"Scelta: **{item['Scelta']}** | Stato: **{item['Esito']}**")
+                if c2.button("WIN ✅", key=f"win_db_{i}"): st.session_state.db_partite[i]['Esito'] = 'VINTO 💰'; st.rerun()
+                if c3.button("LOSS ❌", key=f"loss_db_{i}"): st.session_state.db_partite[i]['Esito'] = 'PERSO 📉'; st.rerun()
+                if c4.button("🗑️", key=f"del_db_{i}"): st.session_state.db_partite.pop(i); st.rerun()
     else:
-        st.write("Archivio vuoto.")
+        st.write("Nessun pronostico salvato.")
