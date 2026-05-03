@@ -89,6 +89,7 @@ with tab1:
         st.dataframe(df_r[["Risultato", "Prob", "QF"]].style.apply(hl, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=245, use_container_width=True)
 
     # --- SCENARI COMBO DINAMICI ---
+st.subheader("🚀 Scenari Combo Multigol (Dinamici)")
   def get_range(mu):
         if mu < 1.2: return (0, 1)
         if mu < 2.2: return (1, 3)
