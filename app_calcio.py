@@ -21,13 +21,12 @@ st.markdown("""
         padding: 4px 8px !important; border-radius: 6px !important;
     }
     div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold !important; }
+    /* TASTO SALVA GREEN */
     div.stButton > button:first-child {
         background-color: #28a745 !important; color: white !important;
         font-weight: bold !important; border-radius: 6px !important;
         height: 38px !important; width: 100% !important; margin-top: 25px !important;
     }
-    .btn-win button { background-color: #28a745 !important; color: white !important; height: 20px !important; font-size: 9px !important; }
-    .btn-loss button { background-color: #dc3545 !important; color: white !important; height: 20px !important; font-size: 9px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -42,7 +41,7 @@ t_h = c_t1.text_input("Squadra Casa", value="Bologna")
 t_o = c_t2.text_input("Squadra Ospite", value="Cagliari")
 match_name = f"{t_h} - {t_o}"
 
-if c_btn.button("💾 CREA RIGA"):
+if c_btn.button("💾 SALVA INCONTRO"):
     if match_name not in st.session_state.db:
         st.session_state.db[match_name] = []
         st.toast("Riga creata!")
@@ -53,20 +52,31 @@ def add_to_db(pron):
         st.toast(f"Inviato: {pron}")
     else: st.error("Clicca su CREA RIGA!")
 
-# --- SIDEBAR E CALCOLI ---
-st.sidebar.header("📊 DATI")
-c_f_s = st.sidebar.number_input("Gol Fatti Casa (St)", 15); c_s_s = st.sidebar.number_input("Gol Subiti Casa (St)", 10); c_g_s = st.sidebar.number_input("Partite Casa (St)", 8)
-c_f_5 = st.sidebar.number_input("Forma Fatti Casa", 8); c_s_5 = st.sidebar.number_input("Forma Subiti Casa", 4)
+# --- SIDEBAR ---
+st.sidebar.header("🏠 DATI CASA")
+c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", 15)
+c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", 10)
+c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", 8)
+st.sidebar.subheader("🔥 Forma (U5)")
+c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", 8)
+c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", 4)
 st.sidebar.markdown("---")
-o_f_s = st.sidebar.number_input("Gol Fatti Osp (St)", 10); o_s_s = st.sidebar.number_input("Gol Subiti Osp (St)", 18); o_g_s = st.sidebar.number_input("Partite Osp (St)", 8)
-o_f_5 = st.sidebar.number_input("Forma Fatti Osp", 3); o_s_5 = st.sidebar.number_input("Forma Subiti Osp", 9)
+st.sidebar.header("🚀 DATI OSPITE")
+o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", 10)
+o_s_s = st.sidebar.number_input("Gol Subiti Ospite (Stagione)", 18)
+o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", 8)
+st.sidebar.subheader("🔥 Forma (U5)")
+o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", 3)
+o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", 9)
 st.sidebar.markdown("---")
 q1_b, qx_b, q2_b = st.sidebar.number_input("Quota 1", 2.0), st.sidebar.number_input("Quota X", 3.2), st.sidebar.number_input("Quota 2", 3.5)
 
+# --- CALCOLI ---
 def w_avg(sf, r5, gs): return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
 ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
 ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
 
+st.title("⚽ FT SCORE DETECTOR & MULTIGOL PRO")
 tab1, tab2, tab3 = st.tabs(["🎯 FT SCORE", "📊 POWER RATING", "📂 DATABASE"])
 
 with tab1:
@@ -75,7 +85,7 @@ with tab1:
     pc = [poisson(ex_c, i) for i in range(max_g)]; po = [poisson(ex_o, i) for i in range(max_g)]
     for h in range(max_g):
         for a in range(max_g): matrix[h, a] = pc[h] * po[a]
-    scen = list(dict.fromkeys([f"{int(round(ex_c))}-{int(round(ex_o))}", f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", f"{int(math.floor(ex_c))}-{int(math.ceil(ex_o))}"]))
+    scen = list(dict.fromkeys([f"{int(round(ex_c))}-{int(round(ex_o))}", f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", f"{int(math.floor(ex_c))}-{int(math.ceil(exp_o if 'exp_o' in locals() else ex_o))}"]))
 
     c_c1, c_c2 = st.columns([2, 1.2])
     with c_c1:
@@ -106,19 +116,19 @@ with tab1:
     cb = st.columns(3)
     p_bi, n_bi = gp(rc[0], rc[1], ro[0], ro[1]), f"CASA {rc[0]}-{rc[1]} + OSPITE {ro[0]}-{ro[1]}"
     with cb[0]:
-        st.metric("BILANCIATO", n_bi, delta=f"{p_bi:.1f}%")
+        st.metric("BILANCIATO", n_bi, delta=f"{p_bi:.1f}% (QF:{100/p_bi:.2f})")
         if st.button("📌 Invia Bil"): add_to_db(f"Bil: {n_bi}")
     if ex_c >= ex_o: lab_d, n_d, p_d = "DOMINIO CASA", f"CASA {rc[0]}-{rc[1]} + OSPITE 0-1", gp(rc[0], rc[1], 0, 1)
     else: lab_d, n_d, p_d = "DOMINIO OSPITE", f"CASA 0-1 + OSPITE {ro[0]}-{ro[1]}", gp(0, 1, ro[0], ro[1])
     with cb[1]:
-        st.metric(lab_d, n_d, delta=f"{p_d:.1f}%")
-        if st.button(f"📌 Invia {lab_d}"): add_to_db(f"Dom: {n_d}")
+        st.metric(lab_d, n_d, delta=f"{p_d:.1f}% (QF:{100/p_d:.2f})")
+        if st.button(f"📌 Invia Dom"): add_to_db(f"Dom: {n_d}")
     p_go = gp(1,3,1,3)
     with cb[2]:
-        st.metric("COMBO GOAL", "CASA 1-3 + OSPITE 1-3", delta=f"{p_go:.1f}%")
+        st.metric("COMBO GOAL", "CASA 1-3 + OSPITE 1-3", delta=f"{p_go:.1f}% (QF:{100/p_go:.2f})")
         if st.button("📌 Invia Goal"): add_to_db("Goal: CASA 1-3 + OSPITE 1-3")
 
-    st.subheader("📈 Mercati & Multigol")
+    st.subheader("📈 Mercati")
     p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
     ov, pg = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100, sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
     mc = st.columns(6)
@@ -127,18 +137,23 @@ with tab1:
     cmg = st.columns(4)
     def gmm(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
     for i, mg in enumerate([(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]):
-        cmg[i % 4].metric(f"MG {mg[0]}-{mg[1]}", f"{gmm(mg[0], mg[1]):.1f}%", f"QF:{100/gmm(mg[0], mg[1]):.2f}")
+        val_mg = gmm(mg[0], mg[1])
+        cmg[i % 4].metric(f"MG {mg[0]}-{mg[1]}", f"{val_mg:.1f}%", f"QF:{100/val_mg:.2f}")
 
     st.markdown("---")
     cd1, cd2, cd3 = st.columns(3)
     with cd1:
         st.write("**🏠 MG CASA**")
-        for l, h in [(1,2), (1,3), (2,3)]: st.metric(f"Casa {l}-{h}", f"{sum(pc[i] for i in range(l, h+1))*100:.1f}%", f"QF:{100/(sum(pc[i] for i in range(l, h+1))*100/100):.2f}")
+        for l, h in [(1,2), (1,3), (2,3)]:
+            pr = sum(pc[i] for i in range(l, h+1))*100
+            st.metric(f"Casa {l}-{h}", f"{pr:.1f}%", f"QF:{100/pr*100:.2f}" if pr>0 else "0")
     with cd2:
         st.write("**🚀 MG OSPITE**")
-        for l, h in [(1,2), (1,3), (2,3)]: st.metric(f"Ospite {l}-{h}", f"{sum(po[i] for i in range(l, h+1))*100:.1f}%", f"QF:{100/(sum(po[i] for i in range(l, h+1))*100/100):.2f}")
+        for l, h in [(1,2), (1,3), (2,3)]:
+            pr = sum(po[i] for i in range(l, h+1))*100
+            st.metric(f"Ospite {l}-{h}", f"{pr:.1f}%", f"QF:{100/pr*100:.2f}" if pr>0 else "0")
     with cd3:
-        st.write("**⚖️ DOPPIA CHANCE**")
+        st.write("**⚖️ DC**")
         st.metric("1X", f"{(p1+px):.1f}%", f"QF:{100/(p1+px):.2f}"); st.metric("X2", f"{(p2+px):.1f}%", f"QF:{100/(p2+px):.2f}"); st.metric("12", f"{(p1+p2):.1f}%", f"QF:{100/(p1+p2):.2f}")
 
 with tab2:
