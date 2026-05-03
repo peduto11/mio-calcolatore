@@ -89,8 +89,7 @@ with tab1:
         st.dataframe(df_r[["Risultato", "Prob", "QF"]].style.apply(hl, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=245, use_container_width=True)
 
     # --- SCENARI COMBO DINAMICI ---
-    st.subheader("🚀 Scenari Combo Multigol (Dinamici)")
-    def get_range(mu):
+  def get_range(mu):
         if mu < 1.2: return (0, 1)
         if mu < 2.2: return (1, 3)
         return (2, 4)
@@ -101,21 +100,20 @@ with tab1:
     def get_combo_p(c_r, o_r):
         return sum(matrix[h, a] for h in range(c_r[0], c_r[1]+1) for a in range(o_r[0], o_r[1]+1) if h < max_g and a < max_g) * 100
 
-    # Combo 1: Bilanciato (Usa i range dinamici)
+    # Combo 1: Bilanciato
     p_bil = get_combo_p(r_c, r_o)
-    # Combo 2: Dominio (Switcha Favorita)
+    # Combo 2: Dominio
     if exp_c >= exp_o:
-        label_dom, name_dom, p_dom = "DOMINIO CASA", f"C{r_c[0]}-{r_c[1]} + O0-1", get_combo_p(r_c, (0, 1))
+        label_dom, name_dom, p_dom = "DOMINIO CASA", f"CASA {r_c[0]}-{r_c[1]} + OSPITE 0-1", get_combo_p(r_c, (0, 1))
     else:
-        label_dom, name_dom, p_dom = "DOMINIO OSPITE", f"C0-1 + O{r_o[0]}-{r_o[1]}", get_combo_p((0, 1), r_o)
+        label_dom, name_dom, p_dom = "DOMINIO OSPITE", f"CASA 0-1 + OSPITE {r_o[0]}-{r_o[1]}", get_combo_p((0, 1), r_o)
     
     p_goal_over = get_combo_p((1, 3), (1, 3))
 
     cc = st.columns(3)
-    cc[0].metric("BILANCIATO", f"C{r_c[0]}-{r_c[1]} + O{r_o[0]}-{r_o[1]}", f"{p_bil:.1f}% (QF: {100/p_bil:.2f})")
+    cc[0].metric("BILANCIATO", f"CASA {r_c[0]}-{r_c[1]} + OSPITE {r_o[0]}-{r_o[1]}", f"{p_bil:.1f}% (QF: {100/p_bil:.2f})")
     cc[1].metric(label_dom, name_dom, f"{p_dom:.1f}% (QF: {100/p_dom:.2f})")
-    cc[2].metric("COMBO GOAL", "C1-3 + O1-3", f"{p_goal_over:.1f}% (QF: {100/p_goal_over:.2f})")
-
+    cc[2].metric("COMBO GOAL", "CASA 1-3 + OSPITE 1-3", f"{p_goal_over:.1f}% (QF: {100/p_goal_over:.2f})")
     # MERCATI E MULTIGOL
     st.subheader("📈 Mercati Principali")
     p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
