@@ -10,20 +10,24 @@ st.set_page_config(page_title="FT SCORE DETECTOR PRO", page_icon="⚽", layout="
 if 'db_partite' not in st.session_state:
     st.session_state.db_partite = []
 
-# --- CSS PER LOOK PULITO ---
+# --- CSS PER LOOK PROFESSIONALE E COMPATTO ---
 st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
     h1, h2, h3 { margin-top: -20px; padding-bottom: 10px; font-size: 1.3rem !important; }
+    
+    /* Stile schede piccole e leggibili */
     div[data-testid="stMetric"] {
         background-color: rgba(128, 128, 128, 0.05) !important;
         border: 1px solid rgba(128, 128, 128, 0.2) !important;
-        padding: 5px 10px !important;
+        padding: 4px 8px !important;
         border-radius: 6px !important;
     }
-    div[data-testid="stMetricValue"] { font-size: 18px !important; font-weight: bold !important; }
-    div[data-testid="stMetricLabel"] { font-size: 13px !important; }
-    .stButton>button { height: 28px !important; font-size: 11px !important; margin-top: 25px !important; }
+    div[data-testid="stMetricValue"] { font-size: 16px !important; font-weight: bold !important; }
+    div[data-testid="stMetricLabel"] { font-size: 12px !important; }
+    
+    /* Bottoni invio database */
+    .stButton>button { height: 26px !important; font-size: 10px !important; margin-top: 5px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -31,23 +35,23 @@ def poisson(lmbda, x):
     if lmbda <= 0: return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
-# --- BLOCCO SALVATAGGIO (Sopra i Tab) ---
-st.write("### 📝 REGISTRAZIONE INCONTRO")
+# --- BLOCCO SALVATAGGIO ---
+st.write("### 📝 NOME INCONTRO PER SALVATAGGIO")
 col_t1, col_t2, col_btn = st.columns([3, 3, 1])
 t_home = col_t1.text_input("Squadra Casa", value="Team A")
 t_away = col_t2.text_input("Squadra Ospite", value="Team B")
 
-def salva_nel_db(pronostico):
+def salva_in_db(pronostico):
     st.session_state.db_partite.append({
         'Gara': f"{t_home}-{t_away}",
         'Scelta': pronostico,
         'Esito': '⏳',
         'Ora': pd.Timestamp.now().strftime("%H:%M")
     })
-    st.toast("Salvato in Archivio!")
+    st.toast(f"Inviato: {pronostico}")
 
-if col_btn.button("💾 SALVA"):
-    salva_nel_db("Analisi Generica")
+if col_btn.button("💾 SALVA INCONTRO"):
+    salva_in_db("Analisi Base")
 
 # --- SIDEBAR ---
 st.sidebar.header("🏠 DATI CASA")
@@ -57,6 +61,7 @@ c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
 c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", value=8)
 c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", value=4)
+
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 DATI OSPITE")
 o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", value=10)
@@ -65,6 +70,7 @@ o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
 o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", value=3)
 o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", value=9)
+
 st.sidebar.markdown("---")
 q1_b = st.sidebar.number_input("Quota 1", value=2.00)
 qx_b = st.sidebar.number_input("Quota X", value=3.20)
@@ -104,36 +110,44 @@ with tab1:
         df_r = pd.DataFrame(ris).sort_values(by="Prob", ascending=False).head(10)
         st.dataframe(df_r.style.apply(lambda r: ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in scen else ['']*3, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=230, use_container_width=True)
 
+    # --- SCENARI ESATTI (CON QF E % SISTEMATE) ---
     st.subheader("💡 Scenari Esatti")
     cols_s = st.columns(4)
     for i, r_n in enumerate(scen):
-        p_s = matrix[int(r_n.split('-')[0]), int(r_n.split('-')[1])] * 100
-        cols_s[i].metric(r_n, f"{p_s:.1f}%")
-        if cols_s[i].button(f"📌 Invia {r_n}"): salva_nel_db(f"Esatto {r_n}")
+        p_val = matrix[int(r_n.split('-')[0]), int(r_n.split('-')[1])] * 100
+        with cols_s[i]:
+            st.metric(label=f"SCENARIO", value=r_n, delta=f"{p_val:.1f}% (QF: {100/p_val:.2f})")
+            if st.button(f"📌 Invia {r_n}"): salva_in_db(f"Esatto {r_n}")
 
-    st.subheader("🚀 Scenari Combo")
+    # --- SCENARI COMBO (CON QF AGGIUNTA) ---
+    st.subheader("🚀 Scenari Combo Multigol")
+    def get_combo_p(c_min, c_max, o_min, o_max): return sum(matrix[h, a] for h in range(c_min, c_max+1) for a in range(o_min, o_max+1) if h<max_g and a<max_g) * 100
     r_c = (0,1) if exp_c < 1.2 else (1,3) if exp_c < 2.2 else (2,4)
     r_o = (0,1) if exp_o < 1.2 else (1,3) if exp_o < 2.2 else (2,4)
-    def gp(cr, orr): return sum(matrix[h, a] for h in range(cr[0], cr[1]+1) for a in range(orr[0], orr[1]+1) if h<max_g and a<max_g) * 100
     
     cb = st.columns(3)
-    p_bil = gp(r_c, r_o)
-    cb[0].metric("BILANCIATO", f"CASA {r_c[0]}-{r_c[1]} + OSP {r_o[0]}-{r_o[1]}", f"{p_bil:.1f}%")
-    if cb[0].button("📌 Invia Bil"): salva_nel_db("Bilanciato")
-    
+    # Bilanciato
+    name_bil = f"CASA {r_c[0]}-{r_c[1]} + OSPITE {r_o[0]}-{r_o[1]}"
+    p_bil = get_combo_p(r_c[0], r_c[1], r_o[0], r_o[1])
+    with cb[0]:
+        st.metric("BILANCIATO", name_bil, delta=f"{p_bil:.1f}% (QF: {100/p_bil:.2f})")
+        if st.button("📌 Invia Bil"): salva_in_db(f"Bil: {name_bil}")
+    # Dominio
     if exp_c >= exp_o:
-        name_d, p_d = f"CASA {r_c[0]}-{r_c[1]} + OSP 0-1", gp(r_c, (0, 1))
-        cb[1].metric("DOMINIO CASA", name_d, f"{p_d:.1f}%")
+        label_d, name_d, p_d = "DOMINIO CASA", f"CASA {r_c[0]}-{r_c[1]} + OSPITE 0-1", get_combo_p(r_c[0], r_c[1], 0, 1)
     else:
-        name_d, p_d = f"CASA 0-1 + OSP {r_o[0]}-{r_o[1]}", gp((0, 1), r_o)
-        cb[1].metric("DOMINIO OSPITE", name_d, f"{p_d:.1f}%")
-    if cb[1].button("📌 Invia Dom"): salva_nel_db(name_d)
-    
-    p_go = gp((1,3), (1,3))
-    cb[2].metric("COMBO GOAL", "CASA 1-3 + OSP 1-3", f"{p_go:.1f}%")
-    if cb[2].button("📌 Invia Goal"): salva_nel_db("Combo Goal")
+        label_d, name_d, p_d = "DOMINIO OSPITE", f"CASA 0-1 + OSPITE {r_o[0]}-{r_o[1]}", get_combo_p(0, 1, r_o[0], r_o[1])
+    with cb[1]:
+        st.metric(label_d, name_d, delta=f"{p_d:.1f}% (QF: {100/p_d:.2f})")
+        if st.button("📌 Invia Dom"): salva_in_db(f"Dom: {name_d}")
+    # Goal
+    p_go = get_combo_p(1,3,1,3)
+    with cb[2]:
+        st.metric("COMBO GOAL", "CASA 1-3 + OSPITE 1-3", delta=f"{p_go:.1f}% (QF: {100/p_go:.2f})")
+        if st.button("📌 Invia Goal"): salva_in_db("Combo Goal: 1-3 + 1-3")
 
-    st.subheader("📈 Mercati & Multigol")
+    # --- MERCATI ---
+    st.subheader("📈 Mercati Principali")
     p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
     ov25 = (1 - (matrix[0,0]+matrix[1,0]+matrix[0,1]+matrix[2,0]+matrix[0,2]+matrix[1,1]))*100
     pg = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
@@ -145,6 +159,8 @@ with tab1:
     mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}")
     mc[5].metric("NO GOAL", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
 
+    # --- MULTIGOL PARTITA ---
+    st.subheader("🔢 Multigol Partita")
     def gmm(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
     mg_l = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
     cmg = st.columns(4)
@@ -158,17 +174,17 @@ with tab1:
         st.write("**🏠 MG CASA**")
         for l, h in [(1,2), (1,3), (2,3)]:
             p = sum(prob_c_l[i] for i in range(l, h+1)) * 100
-            st.metric(f"Casa {l}-{h}", f"{p:.1f}%")
+            st.metric(f"Casa {l}-{h}", f"{p:.1f}%", f"QF: {100/p:.2f}")
     with cd2:
         st.write("**🚀 MG OSPITE**")
         for l, h in [(1,2), (1,3), (2,3)]:
             p = sum(prob_o_l[i] for i in range(l, h+1)) * 100
-            st.metric(f"Ospite {l}-{h}", f"{p:.1f}%")
+            st.metric(f"Ospite {l}-{h}", f"{p:.1f}%", f"QF: {100/p:.2f}")
     with cd3:
         st.write("**⚖️ DOPPIA CHANCE**")
-        st.metric("1X", f"{(p1+px):.1f}%")
-        st.metric("X2", f"{(p2+px):.1f}%")
-        st.metric("12", f"{(p1+p2):.1f}%")
+        st.metric("1X", f"{(p1+px):.1f}%", f"QF:{100/(p1+px):.2f}")
+        st.metric("X2", f"{(p2+px):.1f}%", f"QF:{100/(p2+px):.2f}")
+        st.metric("12", f"{(p1+p2):.1f}%", f"QF:{100/(p1+p2):.2f}")
 
 with tab2:
     st.subheader("📊 Power Rating System")
@@ -188,7 +204,7 @@ with tab2:
     st.dataframe(df_b.style.highlight_max(subset=["Prob. BVS"], color="#dcfce7").format({"Prob. BVS": "{:.2f}%"}), use_container_width=True)
 
 with tab3:
-    st.subheader("📂 Archivio Pronostici")
+    st.subheader("📂 Archivio Database")
     if len(st.session_state.db_partite) > 0:
         for i, item in enumerate(st.session_state.db_partite):
             with st.expander(f"📌 {item['Gara']} - {item['Scelta']}", expanded=True):
