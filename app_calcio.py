@@ -58,7 +58,7 @@ def weighted(s_f, r_5, g_s):
 exp_c = (weighted(c_f_s, c_f_5, c_g_s) + weighted(o_s_s, o_s_5, o_g_s)) / 2
 exp_o = (weighted(o_f_s, o_f_5, o_g_s) + weighted(c_s_s, c_s_5, c_g_s)) / 2
 
-tab1, tab2 = st.tabs(["🎯 FT SCORE & MULTIGOL", "📊 BVS 2026 SYSTEM"])
+tab1, tab2 = st.tabs(["🎯 FT SCORE & MULTIGOL", "📊 POWER RATING SYSTEM"])
 
 with tab1:
     st.info(f"📊 **Baricentro Match:** Casa **{exp_c:.2f}** | Ospite **{exp_o:.2f}**")
