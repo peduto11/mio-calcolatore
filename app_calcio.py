@@ -62,24 +62,26 @@ def add_to_db(pron):
     else: 
         st.error("Clicca prima su SALVA INCONTRO per creare la riga!")
 
-# --- SIDEBAR ---
+# --- SIDEBAR (CORRETTA) ---
 st.sidebar.header("🏠 DATI CASA")
-c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", 15)
-c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", 10)
-c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", 8)
+c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", min_value=0, value=15)
+c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", min_value=0, value=10)
+c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", min_value=1, value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
-c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", 8)
-c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", 4)
+c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=8)
+c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=4)
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 DATI OSPITE")
-o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", 10)
-o_s_s = st.sidebar.number_input("Gol Subiti Ospite (Stagione)", 18)
-o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", 8)
+o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", min_value=0, value=10)
+o_s_s = st.sidebar.number_input("Gol Subiti Ospite (Stagione)", min_value=0, value=18)
+o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", min_value=1, value=8)
 st.sidebar.subheader("🔥 Forma (U5)")
-o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", 3)
-o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", 9)
+o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=3)
+o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=9)
 st.sidebar.markdown("---")
-q1_b, qx_b, q2_b = st.sidebar.number_input("Quota 1", 2.0), st.sidebar.number_input("Quota X", 3.2), st.sidebar.number_input("Quota 2", 3.5)
+q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
+qx_b = st.sidebar.number_input("Quota X", min_value=1.00, value=3.20, step=0.10)
+q2_b = st.sidebar.number_input("Quota 2", min_value=1.00, value=3.50, step=0.10)
 
 # --- CALCOLI ---
 def w_avg(sf, r5, gs): return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
@@ -184,34 +186,26 @@ with tab3:
         for m, prs in list(st.session_state.db.items()):
             st.markdown("---") 
             
-            # Se la partita non ha pronostici, mostriamo solo il nome e il tasto elimina
             if not prs:
                 col_m, col_m_del, _ = st.columns([2, 1, 7])
                 col_m.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
                 if col_m_del.button("🗑️ Rimuovi Partita", key=f"del_match_{m}"):
                     del st.session_state.db[m]; st.rerun()
             else:
-                # Creiamo una dinamica di colonne: La prima per il match, le altre per i pronostici
-                # Rapporto pesi colonne: Match(2) - Preds(3 ciascuno)
                 cols = st.columns([2] + [3] * len(prs))
                 
-                # COLONNA 0: Nome Partita e Tasto elimina partita (sulla stessa riga)
                 with cols[0]:
                     c_name, c_del = st.columns([3, 1])
                     c_name.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
                     if c_del.button("🗑️", key=f"del_m_{m}", help="Elimina l'intera partita"):
                         del st.session_state.db[m]; st.rerun()
                 
-                # COLONNE SUCCESSIVE: Pronostici (sulla stessa identica riga del match)
                 for idx, p in enumerate(prs):
                     with cols[idx + 1]:
-                        # Micro-colonne interne per allineare Testo | Bottone Toggle | Cestino
                         cp_testo, cp_toggle, cp_cestino = st.columns([4, 3, 1.5])
                         
-                        # 1. Testo pronostico
                         cp_testo.markdown(f"<div class='table-text'>{p['scelta']}</div>", unsafe_allow_html=True)
                         
-                        # 2. Pulsante Intelligente Toggle (WAIT -> WIN -> LOSS)
                         esito = p['esito']
                         if esito == '⏳':
                             if cp_toggle.button("⚪ WAIT", key=f"tog_{m}_{idx}", help="Clicca per mettere WIN"):
@@ -223,7 +217,6 @@ with tab3:
                             if cp_toggle.button("🔴 LOSS", key=f"tog_{m}_{idx}", help="Clicca per tornare a WAIT"):
                                 st.session_state.db[m][idx]['esito'] = '⏳'; st.rerun()
                         
-                        # 3. Pulsante Cestino Singolo Pronostico
                         if cp_cestino.button("🗑️", key=f"del_p_{m}_{idx}", help="Elimina solo questo pronostico"):
                             st.session_state.db[m].pop(idx); st.rerun()
     else:
