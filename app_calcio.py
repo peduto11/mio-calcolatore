@@ -10,23 +10,29 @@ st.set_page_config(page_title="FT SCORE DETECTOR PRO", page_icon="⚽", layout="
 if 'db' not in st.session_state:
     st.session_state.db = {}
 
-# --- CSS LOOK PROFESSIONALE ---
+# --- CSS LOOK PROFESSIONALE E FIX BOTTONI ---
 st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
     h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.2rem !important; }
+    
+    /* Stile Metriche */
     div[data-testid="stMetric"] {
         background-color: rgba(128, 128, 128, 0.05) !important;
         border: 1px solid rgba(128, 128, 128, 0.1) !important;
         padding: 4px 8px !important; border-radius: 6px !important;
     }
     div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold !important; }
-    /* TASTO SALVA GREEN */
-    div.stButton > button:first-child {
+    
+    /* TASTO SALVA GREEN (Applicato SOLO al tasto Primary) */
+    button[kind="primary"] {
         background-color: #28a745 !important; color: white !important;
         font-weight: bold !important; border-radius: 6px !important;
         height: 38px !important; width: 100% !important; margin-top: 25px !important;
     }
+    
+    /* Riduce leggermente i margini della divider line nella tabella */
+    hr { margin: 0.8em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -41,16 +47,18 @@ t_h = c_t1.text_input("Squadra Casa", value="Bologna")
 t_o = c_t2.text_input("Squadra Ospite", value="Cagliari")
 match_name = f"{t_h} - {t_o}"
 
-if c_btn.button("💾 SALVA INCONTRO"):
+# Usiamo type="primary" così il CSS intercetta solo questo tasto e lo fa verde e grande
+if c_btn.button("💾 SALVA INCONTRO", type="primary"):
     if match_name not in st.session_state.db:
         st.session_state.db[match_name] = []
-        st.toast("Riga creata!")
+        st.toast("Partita creata nel Database!")
 
 def add_to_db(pron):
     if match_name in st.session_state.db:
         st.session_state.db[match_name].append({'scelta': pron, 'esito': '⏳'})
         st.toast(f"Inviato: {pron}")
-    else: st.error("Clicca su CREA RIGA!")
+    else: 
+        st.error("Clicca prima su SALVA INCONTRO per creare la riga!")
 
 # --- SIDEBAR ---
 st.sidebar.header("🏠 DATI CASA")
@@ -169,19 +177,43 @@ with tab2:
 
 with tab3:
     st.subheader("📂 Tabella Database")
+    st.markdown("<span style='color:gray; font-size:14px;'>Ogni partita e i suoi pronostici sono disposti in riga orizzontale. Usa i tasti W, L o 🗑️ per gestirli.</span>", unsafe_allow_html=True)
+    
     if st.session_state.db:
         for m, prs in list(st.session_state.db.items()):
-            with st.container():
-                r1, r2, r3 = st.columns([2, 5, 0.5])
-                r1.write(f"**{m}**")
-                with r2:
-                    for j, p in enumerate(prs):
-                        col1, col2, col3 = st.columns([3, 1, 1])
-                        ic = "🟢" if p['esito'] == 'WIN' else "🔴" if p['esito'] == 'LOSS' else "⏳"
-                        col1.write(f"{ic} {p['scelta']}")
-                        with col2:
-                            if st.button("W", key=f"w_{m}_{j}"): st.session_state.db[m][j]['esito'] = 'WIN'; st.rerun()
-                        with col3:
-                            if st.button("L", key=f"l_{m}_{j}"): st.session_state.db[m][j]['esito'] = 'LOSS'; st.rerun()
-                if r3.button("🗑️", key=f"d_{m}"): del st.session_state.db[m]; st.rerun()
-                st.markdown("---")
+            st.markdown("---") # Linea di divisione tra le varie partite
+            
+            # Layout a griglia: 1 colonna per il Match, resto delle colonne per i pronostici inviati
+            col_match, col_preds = st.columns([1.5, 4.5])
+            
+            # COLONNA DI SINISTRA (NOME PARTITA E TASTO ELIMINA MATCH INTERO)
+            with col_match:
+                st.write(f"**{m}**")
+                if st.button("🗑️ Elimina Partita", key=f"del_match_{m}"):
+                    del st.session_state.db[m]
+                    st.rerun()
+            
+            # COLONNA DI DESTRA (TUTTI I PRONOSTICI DISPOSTI IN ORIZZONTALE)
+            with col_preds:
+                if prs:
+                    # Crea un numero di colonne dinamico in base a quanti pronostici ha la partita
+                    p_cols = st.columns(len(prs)) 
+                    
+                    for idx, p in enumerate(prs):
+                        with p_cols[idx]:
+                            # Mostra Esito (Icona + Testo)
+                            ic = "🟢" if p['esito'] == 'WIN' else "🔴" if p['esito'] == 'LOSS' else "⏳"
+                            st.write(f"{ic} {p['scelta']}")
+                            
+                            # Crea 3 mini-colonne sotto al pronostico per i 3 bottoncini
+                            b1, b2, b3 = st.columns(3)
+                            if b1.button("W", key=f"w_{m}_{idx}"): 
+                                st.session_state.db[m][idx]['esito'] = 'WIN'; st.rerun()
+                            if b2.button("L", key=f"l_{m}_{idx}"): 
+                                st.session_state.db[m][idx]['esito'] = 'LOSS'; st.rerun()
+                            if b3.button("🗑️", key=f"d_{m}_{idx}"): 
+                                st.session_state.db[m].pop(idx); st.rerun()
+                else:
+                    st.write("Nessun pronostico salvato per questa partita.")
+    else:
+        st.info("Database vuoto. Salva un incontro e invia dei pronostici per iniziare.")
