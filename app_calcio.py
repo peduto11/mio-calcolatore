@@ -31,8 +31,11 @@ st.markdown("""
         height: 38px !important; width: 100% !important; margin-top: 25px !important;
     }
     
-    /* Riduce leggermente i margini della divider line nella tabella */
-    hr { margin: 0.8em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
+    /* Divisori più compatti */
+    hr { margin: 0.5em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
+    
+    /* Allineamento verticale per il testo nella tabella */
+    .table-text { margin-top: 8px; font-size: 14px; font-weight: 500; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -47,7 +50,6 @@ t_h = c_t1.text_input("Squadra Casa", value="Bologna")
 t_o = c_t2.text_input("Squadra Ospite", value="Cagliari")
 match_name = f"{t_h} - {t_o}"
 
-# Usiamo type="primary" così il CSS intercetta solo questo tasto e lo fa verde e grande
 if c_btn.button("💾 SALVA INCONTRO", type="primary"):
     if match_name not in st.session_state.db:
         st.session_state.db[match_name] = []
@@ -93,7 +95,7 @@ with tab1:
     pc = [poisson(ex_c, i) for i in range(max_g)]; po = [poisson(ex_o, i) for i in range(max_g)]
     for h in range(max_g):
         for a in range(max_g): matrix[h, a] = pc[h] * po[a]
-    scen = list(dict.fromkeys([f"{int(round(ex_c))}-{int(round(ex_o))}", f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", f"{int(math.floor(ex_c))}-{int(math.ceil(exp_o if 'exp_o' in locals() else ex_o))}"]))
+    scen = list(dict.fromkeys([f"{int(round(ex_c))}-{int(round(ex_o))}", f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", f"{int(math.floor(ex_c))}-{int(math.ceil(ex_o))}"]))
 
     c_c1, c_c2 = st.columns([2, 1.2])
     with c_c1:
@@ -177,43 +179,52 @@ with tab2:
 
 with tab3:
     st.subheader("📂 Tabella Database")
-    st.markdown("<span style='color:gray; font-size:14px;'>Ogni partita e i suoi pronostici sono disposti in riga orizzontale. Usa i tasti W, L o 🗑️ per gestirli.</span>", unsafe_allow_html=True)
     
     if st.session_state.db:
         for m, prs in list(st.session_state.db.items()):
-            st.markdown("---") # Linea di divisione tra le varie partite
+            st.markdown("---") 
             
-            # Layout a griglia: 1 colonna per il Match, resto delle colonne per i pronostici inviati
-            col_match, col_preds = st.columns([1.5, 4.5])
-            
-            # COLONNA DI SINISTRA (NOME PARTITA E TASTO ELIMINA MATCH INTERO)
-            with col_match:
-                st.write(f"**{m}**")
-                if st.button("🗑️ Elimina Partita", key=f"del_match_{m}"):
-                    del st.session_state.db[m]
-                    st.rerun()
-            
-            # COLONNA DI DESTRA (TUTTI I PRONOSTICI DISPOSTI IN ORIZZONTALE)
-            with col_preds:
-                if prs:
-                    # Crea un numero di colonne dinamico in base a quanti pronostici ha la partita
-                    p_cols = st.columns(len(prs)) 
-                    
-                    for idx, p in enumerate(prs):
-                        with p_cols[idx]:
-                            # Mostra Esito (Icona + Testo)
-                            ic = "🟢" if p['esito'] == 'WIN' else "🔴" if p['esito'] == 'LOSS' else "⏳"
-                            st.write(f"{ic} {p['scelta']}")
-                            
-                            # Crea 3 mini-colonne sotto al pronostico per i 3 bottoncini
-                            b1, b2, b3 = st.columns(3)
-                            if b1.button("W", key=f"w_{m}_{idx}"): 
+            # Se la partita non ha pronostici, mostriamo solo il nome e il tasto elimina
+            if not prs:
+                col_m, col_m_del, _ = st.columns([2, 1, 7])
+                col_m.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
+                if col_m_del.button("🗑️ Rimuovi Partita", key=f"del_match_{m}"):
+                    del st.session_state.db[m]; st.rerun()
+            else:
+                # Creiamo una dinamica di colonne: La prima per il match, le altre per i pronostici
+                # Rapporto pesi colonne: Match(2) - Preds(3 ciascuno)
+                cols = st.columns([2] + [3] * len(prs))
+                
+                # COLONNA 0: Nome Partita e Tasto elimina partita (sulla stessa riga)
+                with cols[0]:
+                    c_name, c_del = st.columns([3, 1])
+                    c_name.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
+                    if c_del.button("🗑️", key=f"del_m_{m}", help="Elimina l'intera partita"):
+                        del st.session_state.db[m]; st.rerun()
+                
+                # COLONNE SUCCESSIVE: Pronostici (sulla stessa identica riga del match)
+                for idx, p in enumerate(prs):
+                    with cols[idx + 1]:
+                        # Micro-colonne interne per allineare Testo | Bottone Toggle | Cestino
+                        cp_testo, cp_toggle, cp_cestino = st.columns([4, 3, 1.5])
+                        
+                        # 1. Testo pronostico
+                        cp_testo.markdown(f"<div class='table-text'>{p['scelta']}</div>", unsafe_allow_html=True)
+                        
+                        # 2. Pulsante Intelligente Toggle (WAIT -> WIN -> LOSS)
+                        esito = p['esito']
+                        if esito == '⏳':
+                            if cp_toggle.button("⚪ WAIT", key=f"tog_{m}_{idx}", help="Clicca per mettere WIN"):
                                 st.session_state.db[m][idx]['esito'] = 'WIN'; st.rerun()
-                            if b2.button("L", key=f"l_{m}_{idx}"): 
+                        elif esito == 'WIN':
+                            if cp_toggle.button("🟢 WIN", key=f"tog_{m}_{idx}", help="Clicca per mettere LOSS"):
                                 st.session_state.db[m][idx]['esito'] = 'LOSS'; st.rerun()
-                            if b3.button("🗑️", key=f"d_{m}_{idx}"): 
-                                st.session_state.db[m].pop(idx); st.rerun()
-                else:
-                    st.write("Nessun pronostico salvato per questa partita.")
+                        elif esito == 'LOSS':
+                            if cp_toggle.button("🔴 LOSS", key=f"tog_{m}_{idx}", help="Clicca per tornare a WAIT"):
+                                st.session_state.db[m][idx]['esito'] = '⏳'; st.rerun()
+                        
+                        # 3. Pulsante Cestino Singolo Pronostico
+                        if cp_cestino.button("🗑️", key=f"del_p_{m}_{idx}", help="Elimina solo questo pronostico"):
+                            st.session_state.db[m].pop(idx); st.rerun()
     else:
         st.info("Database vuoto. Salva un incontro e invia dei pronostici per iniziare.")
