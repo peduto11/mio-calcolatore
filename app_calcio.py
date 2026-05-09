@@ -38,6 +38,9 @@ def poisson(lmbda, x):
     if lmbda <= 0: return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
+def w_avg(sf, r5, gs): 
+    return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
+
 # --- SELETTORE SPORT (SIDEBAR) ---
 st.sidebar.markdown("### 🔬 SELEZIONA SPORT")
 sport = st.sidebar.radio("", ["⚽ CALCIO", "🏒 HOCKEY GHIACCIO"], horizontal=True)
@@ -85,31 +88,53 @@ if not is_hockey:
     o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=3)
     o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=9)
     
-    def w_avg(sf, r5, gs): return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
     ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
     ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
     max_g = 6
+
 else:
-    # 🏒 INPUT HOCKEY
-    st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
-    h_pg = st.sidebar.number_input("Partite Giocate (PG)", min_value=1, value=4)
-    h_gf = st.sidebar.number_input("Reti Fatte (R - Prima)", min_value=0, value=18)
-    h_gs = st.sidebar.number_input("Reti Subite (R - Dopo)", min_value=0, value=7)
+    # 🏒 INPUT HOCKEY (DOPPIA MODALITA')
+    st.sidebar.markdown("### ⚙️ FORMATO CLASSIFICA HOCKEY")
+    tipo_dati_hockey = st.sidebar.radio("", ["📊 Semplice (Mondiali/Coppe)", "🔥 Avanzata (Campionati)"])
     
-    st.sidebar.markdown("---")
-    st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
-    a_pg = st.sidebar.number_input("Partite Giocate (PG) ", min_value=1, value=4)
-    a_gf = st.sidebar.number_input("Reti Fatte (R - Prima) ", min_value=0, value=11)
-    a_gs = st.sidebar.number_input("Reti Subite (R - Dopo) ", min_value=0, value=11)
+    if tipo_dati_hockey == "📊 Semplice (Mondiali/Coppe)":
+        st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
+        h_pg = st.sidebar.number_input("Partite Giocate (PG)", min_value=1, value=4)
+        h_gf = st.sidebar.number_input("Reti Fatte (R - Prima)", min_value=0, value=18)
+        h_gs = st.sidebar.number_input("Reti Subite (R - Dopo)", min_value=0, value=7)
+        
+        st.sidebar.markdown("---")
+        st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
+        a_pg = st.sidebar.number_input("Partite Giocate (PG) ", min_value=1, value=4)
+        a_gf = st.sidebar.number_input("Reti Fatte (R - Prima) ", min_value=0, value=11)
+        a_gs = st.sidebar.number_input("Reti Subite (R - Dopo) ", min_value=0, value=11)
+        
+        ex_c = ((h_gf / h_pg) + (a_gs / a_pg)) / 2
+        ex_o = ((a_gf / a_pg) + (h_gs / h_pg)) / 2
     
-    avg_h_scored = h_gf / h_pg
-    avg_h_conceded = h_gs / h_pg
-    avg_a_scored = a_gf / a_pg
-    avg_a_conceded = a_gs / a_pg
-    
-    ex_c = (avg_h_scored + avg_a_conceded) / 2
-    ex_o = (avg_a_scored + avg_h_conceded) / 2
-    max_g = 9
+    else:
+        # Modulo Avanzato Hockey (Come il Calcio)
+        st.sidebar.header(f"🔵 {t_h[:10].upper()} (In Casa)")
+        c_f_s = st.sidebar.number_input("Gol Fatti Casa", min_value=0, value=15)
+        c_s_s = st.sidebar.number_input("Gol Subiti Casa", min_value=0, value=10)
+        c_g_s = st.sidebar.number_input("Partite Casa", min_value=1, value=5)
+        st.sidebar.subheader("🔥 Forma (U5)")
+        c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=12)
+        c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=8)
+        
+        st.sidebar.markdown("---")
+        st.sidebar.header(f"🔴 {t_o[:10].upper()} (In Trasferta)")
+        o_f_s = st.sidebar.number_input("Gol Fatti Ospite", min_value=0, value=10)
+        o_s_s = st.sidebar.number_input("Gol Subiti Ospite", min_value=0, value=18)
+        o_g_s = st.sidebar.number_input("Partite Ospite", min_value=1, value=5)
+        st.sidebar.subheader("🔥 Forma (U5)")
+        o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=9)
+        o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=14)
+        
+        ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
+        ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
+        
+    max_g = 9 # Matrice hockey fino a 8 gol
 
 st.sidebar.markdown("---")
 q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
@@ -210,12 +235,11 @@ with tab1:
 
     else:
         # ==========================================
-        # 🏒 ZONA HOCKEY (NUOVA - MARGINE, T/T, COMBO)
+        # 🏒 ZONA HOCKEY (MARGINE, T/T, COMBO)
         # ==========================================
         p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
         
         st.subheader("🎯 Margine Vittoria (Tempi Regolamentari)")
-        # Calcolo Matematico dei Margini (Somma delle diagonali)
         t1_1g = sum(matrix[i, i-1] for i in range(1, max_g)) * 100
         t1_2g = sum(matrix[i, i-2] for i in range(2, max_g)) * 100
         t1_3pg = sum(matrix[i, j] for i in range(3, max_g) for j in range(max_g) if i - j >= 3) * 100
@@ -224,14 +248,12 @@ with tab1:
         t2_2g = sum(matrix[i-2, i] for i in range(2, max_g)) * 100
         t2_3pg = sum(matrix[i, j] for j in range(3, max_g) for i in range(max_g) if j - i >= 3) * 100
 
-        # RIGA 1: Team 1 e Pareggio
         rm1 = st.columns(4)
         rm1[0].metric(f"{t_h[:8].upper()} DI 1 GOAL", f"{t1_1g:.1f}%", f"QF:{100/t1_1g:.2f}" if t1_1g>0 else "0")
         rm1[1].metric(f"{t_h[:8].upper()} DI 2 GOAL", f"{t1_2g:.1f}%", f"QF:{100/t1_2g:.2f}" if t1_2g>0 else "0")
         rm1[2].metric(f"{t_h[:8].upper()} DI 3+ GOAL", f"{t1_3pg:.1f}%", f"QF:{100/t1_3pg:.2f}" if t1_3pg>0 else "0")
         rm1[3].metric("PAREGGIO (X)", f"{px:.1f}%", f"QF:{100/px:.2f}" if px>0 else "0")
         
-        # RIGA 2: Team 2
         rm2 = st.columns(4)
         rm2[0].metric(f"{t_o[:8].upper()} DI 1 GOAL", f"{t2_1g:.1f}%", f"QF:{100/t2_1g:.2f}" if t2_1g>0 else "0")
         rm2[1].metric(f"{t_o[:8].upper()} DI 2 GOAL", f"{t2_2g:.1f}%", f"QF:{100/t2_2g:.2f}" if t2_2g>0 else "0")
@@ -240,10 +262,8 @@ with tab1:
         st.markdown("---")
         
         st.subheader("⚖️ Testa a Testa (Incl. OT) & Handicap (Puck Line)")
-        # Calcolo T/T (Spalmo il pareggio 50/50)
         tt_1 = p1 + (px / 2)
         tt_2 = p2 + (px / 2)
-        # Calcolo Handicap -1.5 / +1.5
         hc_t1_minus15 = t1_2g + t1_3pg
         hc_t2_plus15 = p2 + px + t1_1g
         
@@ -259,7 +279,6 @@ with tab1:
         def over_prob(line): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
         o45, o55, o65 = over_prob(4.5), over_prob(5.5), over_prob(6.5)
         
-        # Calcolo Combo Base
         c1_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a > 4.5) * 100
         c1_u55 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a < 5.5) * 100
         c2_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if a > h and h+a > 4.5) * 100
@@ -281,9 +300,8 @@ with tab1:
 
 with tab2:
     st.subheader("📊 Ricerca Value Bet (Power Rating)")
-    # Calcolo BVS
     vH = ex_c * 10; vA = ex_o * 10
-    tot_v = vH + vA + (8 if is_hockey else 12) # Peso del pareggio
+    tot_v = vH + vA + (8 if is_hockey else 12) 
     b1 = (vH / tot_v) * 100; b2 = (vA / tot_v) * 100; bx = 100 - b1 - b2
     qf1, qfx, qf2 = 100/b1, 100/bx, 100/b2
     v1, vx, v2 = st.columns(3)
