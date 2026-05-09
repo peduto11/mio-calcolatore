@@ -61,8 +61,8 @@ elif is_hockey:
     t_o = c_t2.text_input("Squadra 2 (Ospite/Sfav)", value="Ucraina")
     icona = "🏒"
 else:
-    t_h = c_t1.text_input("Giocatore 1", value="Sinner J.")
-    t_o = c_t2.text_input("Giocatore 2", value="Alcaraz C.")
+    t_h = c_t1.text_input("Giocatore 1", value="Medjedovic H.")
+    t_o = c_t2.text_input("Giocatore 2", value="Fonseca J.")
     icona = "🎾"
 
 match_name = f"{icona} {t_h} - {t_o}"
@@ -83,7 +83,6 @@ def add_to_db(pron):
 st.sidebar.markdown("---")
 
 if is_calcio:
-    # ⚽ INPUT CALCIO
     st.sidebar.header("🏠 DATI CASA")
     c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", min_value=0, value=15)
     c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", min_value=0, value=10)
@@ -105,10 +104,8 @@ if is_calcio:
     max_g = 6
 
 elif is_hockey:
-    # 🏒 INPUT HOCKEY
     st.sidebar.markdown("### ⚙️ FORMATO CLASSIFICA HOCKEY")
     tipo_dati_hockey = st.sidebar.radio("", ["📊 Semplice (Mondiali/Coppe)", "🔥 Avanzata (Campionati)"])
-    
     if tipo_dati_hockey == "📊 Semplice (Mondiali/Coppe)":
         st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
         h_pg = st.sidebar.number_input("Partite Giocate (PG)", min_value=1, value=4)
@@ -142,21 +139,35 @@ elif is_hockey:
     max_g = 9 
 
 elif is_tennis:
-    # 🎾 INPUT TENNIS (REVERSE ENGINEERING)
-    st.sidebar.header("🎾 DATI QUOTE BOOKMAKER")
-    st.sidebar.info("Inserisci le quote dell'1 e del 2. Il motore calcolerà la forza reale depurandole dalla tassa del bookmaker.")
-    q1_t = st.sidebar.number_input("Quota Vittoria G1", min_value=1.01, value=1.40, step=0.05)
-    q2_t = st.sidebar.number_input("Quota Vittoria G2", min_value=1.01, value=2.75, step=0.05)
+    # 🎾 INPUT TENNIS (BASATO SUI SET)
+    st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
+    c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=15)
+    c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=10)
+    c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=10)
+    st.sidebar.subheader("🔥 Forma (U5)")
+    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9) # I dati del tuo screen!
+    c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=2)
+    
     st.sidebar.markdown("---")
-    st.sidebar.header("🌍 SUPERFICIE DI GIOCO")
-    superficie = st.sidebar.selectbox("", ["Terra Rossa (Clay)", "Cemento (Hard)", "Erba (Grass)"])
+    
+    st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
+    o_f_s = st.sidebar.number_input("Set VINTI (Stag/Ospite)", min_value=0, value=12)
+    o_s_s = st.sidebar.number_input("Set PERSI (Stag/Ospite)", min_value=0, value=12)
+    o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=10)
+    st.sidebar.subheader("🔥 Forma (U5)")
+    o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=7)
+    o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=4)
+    
+    # Calcolo Poisson per i SET
+    ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
+    ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
+    max_g = 3 # In tennis calcoliamo 0, 1 o 2 Set per giocatore
 
-# Quota base per Calcio e Hockey
-if not is_tennis:
-    st.sidebar.markdown("---")
-    q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
-    qx_b = st.sidebar.number_input("Quota X", min_value=1.00, value=3.20 if is_calcio else 4.50, step=0.10)
-    q2_b = st.sidebar.number_input("Quota 2", min_value=1.00, value=3.50, step=0.10)
+# Quota base per tutti
+st.sidebar.markdown("---")
+q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
+qx_b = st.sidebar.number_input("Quota X (Se non c'è, metti 1)", min_value=1.00, value=3.20 if is_calcio else (4.50 if is_hockey else 1.00), step=0.10)
+q2_b = st.sidebar.number_input("Quota 2", min_value=1.00, value=3.50, step=0.10)
 
 # --- MATRICE E TABS ---
 st.title(f"🔬 SPORTS LAB PRO - MODULE: {sport.replace('⚽ ','').replace('🏒 ','').replace('🎾 ','')}")
@@ -165,7 +176,7 @@ tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DAT
 with tab1:
     
     # ==========================================
-    # ⚽/🏒 ZONA CALCIO E HOCKEY
+    # ⚽/🏒 ZONA CALCIO E HOCKEY (INTATTA)
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
@@ -303,50 +314,35 @@ with tab1:
             c_combo[3].metric("X + Over 4.5", f"{cx_o45:.1f}%", f"QF:{100/cx_o45:.2f}" if cx_o45>0 else "0")
 
     # ==========================================
-    # 🎾 ZONA TENNIS (INGEGNERIA INVERSA)
+    # 🎾 ZONA TENNIS (MOTORE SET POISSON)
     # ==========================================
     elif is_tennis:
-        st.info("🧠 **ENGINE: REVERSE ODDS MARKOV CHAIN** | Calcolo delle probabilità dai dati dei quotisti.")
+        st.info(f"📊 Set Attesi (xS): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
         
-        # 1. Depurazione Aggio Bookmaker
-        impl_1 = 1 / q1_t
-        impl_2 = 1 / q2_t
-        margin = impl_1 + impl_2
-        true_p1 = impl_1 / margin
-        true_p2 = impl_2 / margin
+        # Generiamo le probabilità pure per 0, 1 e 2 Set usando Poisson
+        raw_20 = poisson(ex_c, 2) * poisson(ex_o, 0)
+        raw_21 = poisson(ex_c, 2) * poisson(ex_o, 1)
+        raw_02 = poisson(ex_c, 0) * poisson(ex_o, 2)
+        raw_12 = poisson(ex_c, 1) * poisson(ex_o, 2)
         
-        # 2. Calcolo Matrice Set (Approssimazione Markov al meglio dei 3)
-        prob_set1 = 0.5 + (true_p1 - 0.5) * 0.8
-        prob_set2 = 1 - prob_set1
+        # Nel tennis la partita finisce appena uno fa 2 set. 
+        # Quindi escludiamo tutti i pareggi o i risultati impossibili e normalizziamo a 100
+        tot_raw = raw_20 + raw_21 + raw_02 + raw_12
+        if tot_raw == 0: tot_raw = 0.0001
         
-        set_2_0 = (prob_set1 ** 2) * 100
-        set_2_1 = (2 * (prob_set1 ** 2) * prob_set2) * 100
-        set_0_2 = (prob_set2 ** 2) * 100
-        set_1_2 = (2 * (prob_set2 ** 2) * prob_set1) * 100
+        s_20 = (raw_20 / tot_raw) * 100
+        s_21 = (raw_21 / tot_raw) * 100
+        s_02 = (raw_02 / tot_raw) * 100
+        s_12 = (raw_12 / tot_raw) * 100
+        
+        p1_vincente = s_20 + s_21
+        p2_vincente = s_02 + s_12
+        
+        # Calcolo Over 2.5 Set (cioè il match va al terzo set: 2-1 o 1-2)
+        over_25_set = s_21 + s_12
+        under_25_set = s_20 + s_02
 
-        # Normalizzazione a 100
-        tot_set = set_2_0 + set_2_1 + set_0_2 + set_1_2
-        s_20, s_21 = (set_2_0/tot_set)*100, (set_2_1/tot_set)*100
-        s_02, s_12 = (set_0_2/tot_set)*100, (set_1_2/tot_set)*100
-
-        # 3. Fattore Superficie x Tie-Break e Games
-        base_tb = 0.15 # Clay
-        game_line = 21.5
-        if superficie == "Cemento (Hard)":
-            base_tb = 0.20; game_line = 22.5
-        elif superficie == "Erba (Grass)":
-            base_tb = 0.26; game_line = 22.5
-        
-        # Match equilibrato = più TB, Match squilibrato = meno TB
-        equilibrio = 1 - abs(true_p1 - true_p2)
-        prob_tb = (base_tb * equilibrio * 1.5) * 100
-        
-        # Over/Under (Correlato al Tie-Break e all'equilibrio)
-        prob_over = (40 + (equilibrio * 25) + (base_tb * 50))
-        if prob_over > 85: prob_over = 85
-        prob_under = 100 - prob_over
-
-        col_t1, col_t2 = st.columns([1.5, 2])
+        col_t1, col_t2 = st.columns([2, 1.2])
         
         with col_t1:
             st.subheader("🎯 Set Betting (Risultato Esatto)")
@@ -354,47 +350,37 @@ with tab1:
                 "Risultato": ["2-0", "2-1", "0-2", "1-2"],
                 "Vincitore": [t_h, t_h, t_o, t_o],
                 "Probabilità": [f"{s_20:.1f}%", f"{s_21:.1f}%", f"{s_02:.1f}%", f"{s_12:.1f}%"],
-                "Quota Fiera": [f"{100/s_20:.2f}", f"{100/s_21:.2f}", f"{100/s_02:.2f}", f"{100/s_12:.2f}"]
-            })
-            st.dataframe(df_sets, hide_index=True, use_container_width=True)
+                "Quota Fiera": [f"{100/s_20:.2f}" if s_20>0 else "0", f"{100/s_21:.2f}" if s_21>0 else "0", f"{100/s_02:.2f}" if s_02>0 else "0", f"{100/s_12:.2f}" if s_12>0 else "0"]
+            }).sort_values(by="Probabilità", ascending=False)
+            st.dataframe(df_sets.style.apply(lambda r: ['background-color: #ffeb3b; color: black; font-weight: bold']*4 if r.name == df_sets.index[0] else ['']*4, axis=1), hide_index=True, use_container_width=True)
 
         with col_t2:
-            st.subheader("🎾 Mercati Principali")
-            tm1 = st.columns(2)
-            tm1[0].metric(f"T/T 1 ({t_h[:8]})", f"{(true_p1*100):.1f}%", f"QF:{1/true_p1:.2f}")
-            tm1[1].metric(f"T/T 2 ({t_o[:8]})", f"{(true_p2*100):.1f}%", f"QF:{1/true_p2:.2f}")
-            
-            tm2 = st.columns(3)
-            tm2[0].metric("TIE-BREAK NEL MATCH (Sì)", f"{prob_tb:.1f}%", f"QF:{100/prob_tb:.2f}")
-            tm2[1].metric(f"OVER {game_line} Games", f"{prob_over:.1f}%", f"QF:{100/prob_over:.2f}")
-            tm2[2].metric(f"UNDER {game_line} Games", f"{prob_under:.1f}%", f"QF:{100/prob_under:.2f}")
+            st.subheader("🎾 Testa a Testa (Match)")
+            st.metric(f"VITTORIA {t_h[:8].upper()}", f"{p1_vincente:.1f}%", f"QF: {100/p1_vincente:.2f}" if p1_vincente>0 else "0")
+            st.metric(f"VITTORIA {t_o[:8].upper()}", f"{p2_vincente:.1f}%", f"QF: {100/p2_vincente:.2f}" if p2_vincente>0 else "0")
 
         st.markdown("---")
-        st.subheader("⚖️ Handicap Games & Combo")
-        
-        # Handicap Approssimato
-        hcap_val = round((true_p1 - true_p2) * 5) * 0.5
-        if hcap_val == 0: hcap_val = 1.5
-        hcap_str_1 = f"{-abs(hcap_val)}" if true_p1 > true_p2 else f"+{abs(hcap_val)}"
-        hcap_str_2 = f"+{abs(hcap_val)}" if true_p1 > true_p2 else f"{-abs(hcap_val)}"
+        st.subheader("⚖️ Set Totali & Handicap Set")
         
         tc1 = st.columns(4)
-        tc1[0].metric(f"HANDICAP {t_h[:5]} ({hcap_str_1})", f"52.0%", "QF: 1.92")
-        tc1[1].metric(f"HANDICAP {t_o[:5]} ({hcap_str_2})", f"48.0%", "QF: 2.08")
+        tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
+        tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
         
-        # Combo
-        cb_1ov = (true_p1 * (prob_over/100)) * 100
-        cb_1un = (true_p1 * (prob_under/100)) * 100
-        tc1[2].metric(f"1 + Over {game_line}", f"{cb_1ov:.1f}%", f"QF:{100/cb_1ov:.2f}")
-        tc1[3].metric(f"1 + Under {game_line}", f"{cb_1un:.1f}%", f"QF:{100/cb_1un:.2f}")
-
+        # Handicap Set -1.5 significa che deve vincere 2-0.
+        tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
+        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
 
 # ==========================================
 # TAB 2 e 3 (Value Bet e Database Comuni a tutti)
 # ==========================================
 with tab2:
     if is_tennis:
-        st.info("La Value Bet del tennis viene calcolata in automatico incrociando l'Aggio. Guarda i QF nella matrice principale per trovare valore.")
+        st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
+        b1 = p1_vincente; b2 = p2_vincente; bx = 0 # No pareggio in tennis
+        qf1, qf2 = (100/b1 if b1>0 else 0), (100/b2 if b2>0 else 0)
+        v1, v2 = st.columns(2)
+        v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
+        v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
     else:
         st.subheader("📊 Ricerca Value Bet (Power Rating)")
         vH = ex_c * 10; vA = ex_o * 10
