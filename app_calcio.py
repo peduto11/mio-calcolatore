@@ -61,8 +61,8 @@ elif is_hockey:
     t_o = c_t2.text_input("Squadra 2 (Ospite/Sfav)", value="Ucraina")
     icona = "🏒"
 else:
-    t_h = c_t1.text_input("Giocatore 1", value="Medjedovic H.")
-    t_o = c_t2.text_input("Giocatore 2", value="Fonseca J.")
+    t_h = c_t1.text_input("Giocatore 1", value="Sinner J.")
+    t_o = c_t2.text_input("Giocatore 2", value="Alcaraz C.")
     icona = "🎾"
 
 match_name = f"{icona} {t_h} - {t_o}"
@@ -145,14 +145,14 @@ elif is_tennis:
     c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=10)
     c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=10)
     st.sidebar.subheader("🔥 Forma (U5)")
-    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9) # I dati del tuo screen!
+    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9) 
     c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=2)
     
     st.sidebar.markdown("---")
     
     st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
-    o_f_s = st.sidebar.number_input("Set VINTI (Stag/Ospite)", min_value=0, value=12)
-    o_s_s = st.sidebar.number_input("Set PERSI (Stag/Ospite)", min_value=0, value=12)
+    o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=12)
+    o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=12)
     o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=10)
     st.sidebar.subheader("🔥 Forma (U5)")
     o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=7)
@@ -176,7 +176,7 @@ tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DAT
 with tab1:
     
     # ==========================================
-    # ⚽/🏒 ZONA CALCIO E HOCKEY (INTATTA)
+    # ⚽/🏒 ZONA CALCIO E HOCKEY 
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
@@ -319,14 +319,11 @@ with tab1:
     elif is_tennis:
         st.info(f"📊 Set Attesi (xS): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
         
-        # Generiamo le probabilità pure per 0, 1 e 2 Set usando Poisson
         raw_20 = poisson(ex_c, 2) * poisson(ex_o, 0)
         raw_21 = poisson(ex_c, 2) * poisson(ex_o, 1)
         raw_02 = poisson(ex_c, 0) * poisson(ex_o, 2)
         raw_12 = poisson(ex_c, 1) * poisson(ex_o, 2)
         
-        # Nel tennis la partita finisce appena uno fa 2 set. 
-        # Quindi escludiamo tutti i pareggi o i risultati impossibili e normalizziamo a 100
         tot_raw = raw_20 + raw_21 + raw_02 + raw_12
         if tot_raw == 0: tot_raw = 0.0001
         
@@ -338,7 +335,6 @@ with tab1:
         p1_vincente = s_20 + s_21
         p2_vincente = s_02 + s_12
         
-        # Calcolo Over 2.5 Set (cioè il match va al terzo set: 2-1 o 1-2)
         over_25_set = s_21 + s_12
         under_25_set = s_20 + s_02
 
@@ -365,8 +361,6 @@ with tab1:
         tc1 = st.columns(4)
         tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
         tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
-        
-        # Handicap Set -1.5 significa che deve vincere 2-0.
         tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
         tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
 
@@ -376,7 +370,7 @@ with tab1:
 with tab2:
     if is_tennis:
         st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
-        b1 = p1_vincente; b2 = p2_vincente; bx = 0 # No pareggio in tennis
+        b1 = p1_vincente; b2 = p2_vincente; bx = 0
         qf1, qf2 = (100/b1 if b1>0 else 0), (100/b2 if b2>0 else 0)
         v1, v2 = st.columns(2)
         v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
