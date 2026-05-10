@@ -2,6 +2,7 @@ import streamlit as st
 import math
 import pandas as pd
 import numpy as np
+import re
 
 # Configurazione Pagina
 st.set_page_config(page_title="SPORTS LAB PRO", page_icon="🔬", layout="wide")
@@ -41,6 +42,25 @@ def poisson(lmbda, x):
 def w_avg(sf, r5, gs): 
     return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
 
+def parse_tennis_results(raw_text):
+    # Cerca pattern tipo 2:0, 2-1, 0:2, ecc.
+    matches = re.findall(r'(\d+)[:\-](\d+)', raw_text)
+    if not matches: return None
+    
+    # Prendi gli ultimi 10 (o meno se ce ne sono meno)
+    recent = matches[:10]
+    last5 = matches[:5]
+    
+    v_tot = sum(int(m[0]) for m in recent)
+    p_tot = sum(int(m[1]) for m in recent)
+    v_5 = sum(int(m[0]) for m in last5)
+    p_5 = sum(int(m[1]) for m in last5)
+    
+    return {
+        'v_tot': v_tot, 'p_tot': p_tot, 'count_tot': len(recent),
+        'v_5': v_5, 'p_5': p_5, 'count_5': len(last5)
+    }
+
 # --- SELETTORE SPORT (SIDEBAR) ---
 st.sidebar.markdown("### 🔬 SELEZIONA SPORT")
 sport = st.sidebar.radio("", ["⚽ CALCIO", "🏒 HOCKEY", "🎾 TENNIS"], horizontal=True)
@@ -67,7 +87,7 @@ else:
 
 match_name = f"{icona} {t_h} - {t_o}"
 
-if c_btn.button("💾 SALVA INCONTRO", type="primary"):
+if c_btn.button("💾 SALVA INCONTRO", key="save_btn_master", type="primary"):
     if match_name not in st.session_state.db:
         st.session_state.db[match_name] = []
         st.toast(f"Match di {sport} creato!")
@@ -139,29 +159,44 @@ elif is_hockey:
     max_g = 9 
 
 elif is_tennis:
-    # 🎾 INPUT TENNIS (BASATO SUI SET)
+    # 🎾 OMEGA TENNIS FAST PARSER (DIRETTA.IT)
+    st.sidebar.markdown("### ⚡ OMEGA FAST PARSER")
+    raw_p1 = st.sidebar.text_area(f"Incolla qui H2H {t_h}", placeholder="Copia la lista da Diretta.it...", height=80)
+    raw_p2 = st.sidebar.text_area(f"Incolla qui H2H {t_o}", placeholder="Copia la lista da Diretta.it...", height=80)
+    
+    # Valori di default
+    p1_def = {'v_tot':15, 'p_tot':10, 'v_5':9, 'p_5':2, 'count_tot':10}
+    p2_def = {'v_tot':12, 'p_tot':12, 'v_5':7, 'p_5':4, 'count_tot':10}
+    
+    if raw_p1: 
+        res = parse_tennis_results(raw_p1)
+        if res: p1_def = res; st.sidebar.success(f"Dati {t_h} estratti!")
+    if raw_p2:
+        res = parse_tennis_results(raw_p2)
+        if res: p2_def = res; st.sidebar.success(f"Dati {t_o} estratti!")
+
     st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
-    c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=15)
-    c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=10)
-    c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=10)
+    c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=p1_def['v_tot'])
+    c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=p1_def['p_tot'])
+    c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=p1_def['count_tot'])
     st.sidebar.subheader("🔥 Forma (U5)")
-    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9) 
-    c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=2)
+    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=p1_def['v_5']) 
+    c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=p1_def['p_5'])
     
     st.sidebar.markdown("---")
     
     st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
-    o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=12)
-    o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=12)
-    o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=10)
+    o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=p2_def['v_tot'])
+    o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=p2_def['p_tot'])
+    o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=p2_def['count_tot'])
     st.sidebar.subheader("🔥 Forma (U5)")
-    o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=7)
-    o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=4)
+    o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=p2_def['v_5'])
+    o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=p2_def['p_5'])
     
     # Calcolo Poisson per i SET
     ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
     ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
-    max_g = 3 # In tennis calcoliamo 0, 1 o 2 Set per giocatore
+    max_g = 3
 
 # Quota base per tutti
 st.sidebar.markdown("---")
@@ -176,7 +211,7 @@ tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DAT
 with tab1:
     
     # ==========================================
-    # ⚽/🏒 ZONA CALCIO E HOCKEY 
+    # ⚽/🏒 ZONA CALCIO E HOCKEY (INTEGRALE)
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
@@ -220,16 +255,16 @@ with tab1:
             p_bi, n_bi = gp(rc[0], rc[1], ro[0], ro[1]), f"T1 {rc[0]}-{rc[1]} + T2 {ro[0]}-{ro[1]}"
             with cb[0]:
                 st.metric("BILANCIATO", n_bi, delta=f"{p_bi:.1f}% (QF:{100/p_bi:.2f})" if p_bi>0 else "0")
-                if st.button("📌 Invia Bil"): add_to_db(f"Bil: {n_bi}")
+                if st.button("📌 Invia Bil", key="btn_bil"): add_to_db(f"Bil: {n_bi}")
             if ex_c >= ex_o: lab_d, n_d, p_d = "DOMINIO T1", f"T1 {rc[0]}-{rc[1]} + T2 0-1", gp(rc[0], rc[1], 0, 1)
             else: lab_d, n_d, p_d = "DOMINIO T2", f"T1 0-1 + T2 {ro[0]}-{ro[1]}", gp(0, 1, ro[0], ro[1])
             with cb[1]:
                 st.metric(lab_d, n_d, delta=f"{p_d:.1f}% (QF:{100/p_d:.2f})" if p_d>0 else "0")
-                if st.button(f"📌 Invia Dom"): add_to_db(f"Dom: {n_d}")
+                if st.button(f"📌 Invia Dom", key="btn_dom"): add_to_db(f"Dom: {n_d}")
             p_go = gp(1, 3, 1, 3)
             with cb[2]:
                 st.metric("COMBO GOAL", "T1 1-3 + T2 1-3", delta=f"{p_go:.1f}% (QF:{100/p_go:.2f})" if p_go>0 else "0")
-                if st.button("📌 Invia Combo Goal"): add_to_db(f"Combo Goal: T1 1-3 + T2 1-3")
+                if st.button("📌 Invia Combo Goal", key="btn_cg"): add_to_db(f"Combo Goal: T1 1-3 + T2 1-3")
 
             st.subheader("📈 Mercati Principali")
             p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
@@ -295,7 +330,6 @@ with tab1:
 
             st.markdown("---")
             st.subheader("🚀 Mercati Principali & Combo Hockey")
-            def over_prob(line): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
             o45, o55 = over_prob(4.5), over_prob(5.5)
             
             c1_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a > 4.5) * 100
@@ -314,7 +348,7 @@ with tab1:
             c_combo[3].metric("X + Over 4.5", f"{cx_o45:.1f}%", f"QF:{100/cx_o45:.2f}" if cx_o45>0 else "0")
 
     # ==========================================
-    # 🎾 ZONA TENNIS (MOTORE SET POISSON)
+    # 🎾 ZONA TENNIS (POTENZIATA)
     # ==========================================
     elif is_tennis:
         st.info(f"📊 Set Attesi (xS): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
@@ -359,13 +393,34 @@ with tab1:
         st.subheader("⚖️ Set Totali & Handicap Set")
         
         tc1 = st.columns(4)
-        tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
-        tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
-        tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
-        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
+        tc1[0].metric("UNDER 2.5 SET (2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}")
+        tc1[1].metric("OVER 2.5 SET (3 Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}")
+        tc1[2].metric(f"HDP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}")
+        tc1[3].metric(f"HDP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}")
+
+        st.markdown("---")
+        st.subheader("📈 ANALISI GAME & TIE-BREAK (STIMA MATEMATICA)")
+        # Calcolo Stime basate sulla distribuzione dei Set
+        avg_g = (s_20*18.5 + s_02*18.5 + s_21*26.5 + s_12*26.5) / 100
+        prob_tb = ((s_21 + s_12) * 0.45) + ((s_20 + s_02) * 0.15)
+        prob_o22 = (s_21 + s_12 + (s_20 * 0.2)) # Stima Over 22.5
+        
+        cg1, cg2, cg3 = st.columns(3)
+        cg1.metric("MEDIA GAME ATTESI", f"{avg_g:.1f}")
+        cg2.metric("PROB. TIE-BREAK", f"{prob_tb:.1f}%", f"QF: {100/prob_tb:.2f}" if prob_tb>0 else "0")
+        cg3.metric("OVER 22.5 GAME", f"{prob_o22:.1f}%", f"QF: {100/prob_o22:.2f}" if prob_o22>0 else "0")
+        
+        st.write("**📊 MERCATI GAME ACCESSORI**")
+        cga1, cga2, cga3 = st.columns(3)
+        p_o95 = (45 + (prob_tb/2))
+        cga1.metric("SET 1 OVER 9.5", f"{p_o95:.1f}%", f"QF: {100/p_o95:.2f}")
+        p_u20 = (s_20*0.7 + s_02*0.7)
+        cga2.metric("UNDER 20.5 GAME", f"{p_u20:.1f}%", f"QF: {100/p_u20:.2f}")
+        p_vset = (p1_vincente + s_12)
+        cga3.metric("GIOCATORE 1 VINCE ALMENO 1 SET", f"{p_vset:.1f}%", f"QF: {100/p_vset:.2f}")
 
 # ==========================================
-# TAB 2 e 3 (Value Bet e Database Comuni a tutti)
+# TAB 2 e 3 (VALUE RATING E DATABASE - ORIGINALI)
 # ==========================================
 with tab2:
     if is_tennis:
