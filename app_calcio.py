@@ -15,20 +15,20 @@ st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
     h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.2rem !important; }
-
+    
     div[data-testid="stMetric"] {
         background-color: rgba(128, 128, 128, 0.05) !important;
         border: 1px solid rgba(128, 128, 128, 0.1) !important;
         padding: 4px 8px !important; border-radius: 6px !important;
     }
     div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold !important; }
-
+    
     button[kind="primary"] {
         background-color: #28a745 !important; color: white !important;
         font-weight: bold !important; border-radius: 6px !important;
         height: 38px !important; width: 100% !important; margin-top: 25px !important;
     }
-
+    
     hr { margin: 0.5em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
     .table-text { margin-top: 8px; font-size: 14px; font-weight: 500; }
     </style>
@@ -79,6 +79,7 @@ def add_to_db(pron):
     else: 
         st.error("Clicca prima su SALVA INCONTRO per creare la riga!")
 
+# --- SIDEBAR DINAMICA ---
 st.sidebar.markdown("---")
 
 if is_calcio:
@@ -97,7 +98,7 @@ if is_calcio:
     st.sidebar.subheader("🔥 Forma (U5)")
     o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=3)
     o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=9)
-
+    
     ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
     ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
     max_g = 6
@@ -139,42 +140,24 @@ elif is_hockey:
 
 elif is_tennis:
     # 🎾 INPUT TENNIS (BASATO SUI SET)
-    st.sidebar.subheader("⚡ TENNIS FAST PARSER")
-    raw_h = st.sidebar.text_area(f"Incolla Risultati {t_h}", placeholder="Es: 2-0, 2-1, 1-2...", height=70)
-    raw_o = st.sidebar.text_area(f"Incolla Risultati {t_o}", placeholder="Es: 0-2, 2-1, 2-0...", height=70)
-
-    def parse_tennis(txt):
-        import re
-        sets = re.findall(r'(\d)\s*[:\-]\s*(\d)', txt)
-        v, p = 0, 0
-        v5, p5 = 0, 0
-        for i, (s1, s2) in enumerate(sets):
-            s1, s2 = int(s1), int(s2)
-            v += s1; p += s2
-            if i < 5: v5 += s1; p5 += s2
-        return v, p, len(sets) if len(sets) > 0 else 1, v5, p5
-
-    vh, ph, gh, vh5, ph5 = parse_tennis(raw_h)
-    vo, po, go, vo5, po5 = parse_tennis(raw_o)
-
     st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
-    c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=vh if vh > 0 else 15)
-    c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=ph if ph > 0 else 10)
-    c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=gh if gh > 1 else 10)
+    c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=15)
+    c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=10)
+    c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=10)
     st.sidebar.subheader("🔥 Forma (U5)")
-    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=vh5 if vh5 > 0 else 9) 
-    c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=ph5 if ph5 > 0 else 2)
-
+    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9) 
+    c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=2)
+    
     st.sidebar.markdown("---")
-
+    
     st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
-    o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=vo if vo > 0 else 12)
-    o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=po if po > 0 else 12)
-    o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=go if go > 1 else 10)
+    o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=12)
+    o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=12)
+    o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=10)
     st.sidebar.subheader("🔥 Forma (U5)")
-    o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=vo5 if vo5 > 0 else 7)
-    o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=po5 if po5 > 0 else 4)
-
+    o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=7)
+    o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=4)
+    
     # Calcolo Poisson per i SET
     ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
     ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
@@ -186,11 +169,12 @@ q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
 qx_b = st.sidebar.number_input("Quota X (Se non c'è, metti 1)", min_value=1.00, value=3.20 if is_calcio else (4.50 if is_hockey else 1.00), step=0.10)
 q2_b = st.sidebar.number_input("Quota 2", min_value=1.00, value=3.50, step=0.10)
 
+# --- MATRICE E TABS ---
 st.title(f"🔬 SPORTS LAB PRO - MODULE: {sport.replace('⚽ ','').replace('🏒 ','').replace('🎾 ','')}")
 tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DATABASE HUB"])
 
 with tab1:
-
+    
     # ==========================================
     # ⚽/🏒 ZONA CALCIO E HOCKEY 
     # ==========================================
@@ -251,13 +235,12 @@ with tab1:
             p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
             def gmm(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
             def over_prob(line): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
-
+            
             mc = st.columns(6)
             mc[0].metric("1", f"{p1:.1f}%", f"QF:{100/p1:.2f}"); mc[1].metric("X", f"{px:.1f}%", f"QF:{100/px:.2f}"); mc[2].metric("2", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
-
             ov, pg = over_prob(2.5), sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
             mc[3].metric("O2.5", f"{ov:.1f}%", f"QF:{100/ov:.2f}"); mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}"); mc[5].metric("NO G", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
-
+            
             cmg = st.columns(4)
             for i, mg in enumerate([(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]):
                 val_mg = gmm(mg[0], mg[1])
@@ -303,7 +286,7 @@ with tab1:
             st.subheader("⚖️ Testa a Testa (Incl. OT) & Handicap (Puck Line)")
             tt_1 = p1 + (px / 2); tt_2 = p2 + (px / 2)
             hc_t1_minus15 = t1_2g + t1_3pg; hc_t2_plus15 = p2 + px + t1_1g
-
+            
             ctt = st.columns(4)
             ctt[0].metric(f"T/T 1 ({t_h[:8]})", f"{tt_1:.1f}%", f"QF:{100/tt_1:.2f}" if tt_1>0 else "0")
             ctt[1].metric(f"T/T 2 ({t_o[:8]})", f"{tt_2:.1f}%", f"QF:{100/tt_2:.2f}" if tt_2>0 else "0")
@@ -314,7 +297,7 @@ with tab1:
             st.subheader("🚀 Mercati Principali & Combo Hockey")
             def over_prob(line): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
             o45, o55 = over_prob(4.5), over_prob(5.5)
-
+            
             c1_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a > 4.5) * 100
             c1_u55 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a < 5.5) * 100
             c2_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if a > h and h+a > 4.5) * 100
@@ -323,7 +306,7 @@ with tab1:
             mch = st.columns(6)
             mch[0].metric("1 (Reg Time)", f"{p1:.1f}%", f"QF:{100/p1:.2f}"); mch[1].metric("X (Reg Time)", f"{px:.1f}%", f"QF:{100/px:.2f}"); mch[2].metric("2 (Reg Time)", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
             mch[3].metric("OVER 4.5", f"{o45:.1f}%", f"QF:{100/o45:.2f}" if o45>0 else "0"); mch[4].metric("OVER 5.5", f"{o55:.1f}%", f"QF:{100/o55:.2f}" if o55>0 else "0"); mch[5].metric("UNDER 5.5", f"{(100-o55):.1f}%", f"QF:{100/(100-o55):.2f}" if (100-o55)>0 else "0")
-
+            
             c_combo = st.columns(4)
             c_combo[0].metric("1 + Over 4.5", f"{c1_o45:.1f}%", f"QF:{100/c1_o45:.2f}" if c1_o45>0 else "0")
             c_combo[1].metric("1 + Under 5.5", f"{c1_u55:.1f}%", f"QF:{100/c1_u55:.2f}" if c1_u55>0 else "0")
@@ -335,28 +318,28 @@ with tab1:
     # ==========================================
     elif is_tennis:
         st.info(f"📊 Set Attesi (xS): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
-
+        
         raw_20 = poisson(ex_c, 2) * poisson(ex_o, 0)
         raw_21 = poisson(ex_c, 2) * poisson(ex_o, 1)
         raw_02 = poisson(ex_c, 0) * poisson(ex_o, 2)
         raw_12 = poisson(ex_c, 1) * poisson(ex_o, 2)
-
+        
         tot_raw = raw_20 + raw_21 + raw_02 + raw_12
         if tot_raw == 0: tot_raw = 0.0001
-
+        
         s_20 = (raw_20 / tot_raw) * 100
         s_21 = (raw_21 / tot_raw) * 100
         s_02 = (raw_02 / tot_raw) * 100
         s_12 = (raw_12 / tot_raw) * 100
-
+        
         p1_vincente = s_20 + s_21
         p2_vincente = s_02 + s_12
-
+        
         over_25_set = s_21 + s_12
         under_25_set = s_20 + s_02
 
         col_t1, col_t2 = st.columns([2, 1.2])
-
+        
         with col_t1:
             st.subheader("🎯 Set Betting (Risultato Esatto)")
             df_sets = pd.DataFrame({
@@ -374,13 +357,16 @@ with tab1:
 
         st.markdown("---")
         st.subheader("⚖️ Set Totali & Handicap Set")
-
+        
         tc1 = st.columns(4)
         tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
         tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
         tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
         tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
 
+# ==========================================
+# TAB 2 e 3 (Value Bet e Database Comuni a tutti)
+# ==========================================
 with tab2:
     if is_tennis:
         st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
