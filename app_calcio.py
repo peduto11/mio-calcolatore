@@ -1,3 +1,166 @@
+  import streamlit as st
+import math
+import pandas as pd
+import numpy as np
+Configurazione Pagina
+st.set_page_config(page_title="SPORTS LAB PRO", page_icon="🔬", layout="wide")
+--- MEMORIA DATABASE ---
+if 'db' not in st.session_state:
+st.session_state.db = {}
+--- CSS LOOK PROFESSIONALE E FIX BOTTONI ---
+st.markdown("""
+<style>
+.element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
+h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.2rem !important; }
+code
+Code
+div[data-testid="stMetric"] {
+    background-color: rgba(128, 128, 128, 0.05) !important;
+    border: 1px solid rgba(128, 128, 128, 0.1) !important;
+    padding: 4px 8px !important; border-radius: 6px !important;
+}
+div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold !important; }
+
+button[kind="primary"] {
+    background-color: #28a745 !important; color: white !important;
+    font-weight: bold !important; border-radius: 6px !important;
+    height: 38px !important; width: 100% !important; margin-top: 25px !important;
+}
+
+hr { margin: 0.5em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
+.table-text { margin-top: 8px; font-size: 14px; font-weight: 500; }
+</style>
+""", unsafe_allow_html=True)
+def poisson(lmbda, x):
+if lmbda <= 0: return 1 if x == 0 else 0
+return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
+def w_avg(sf, r5, gs):
+return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
+--- SELETTORE SPORT (SIDEBAR) ---
+st.sidebar.markdown("### 🔬 SELEZIONA SPORT")
+sport = st.sidebar.radio("", ["⚽ CALCIO", "🏒 HOCKEY", "🎾 TENNIS"], horizontal=True)
+is_calcio = sport == "⚽ CALCIO"
+is_hockey = sport == "🏒 HOCKEY"
+is_tennis = sport == "🎾 TENNIS"
+--- REGISTRAZIONE INCONTRO ---
+st.write(f"### 📝 REGISTRAZIONE INCONTRO ({sport})")
+c_t1, c_t2, c_btn = st.columns([3, 3, 1.5])
+if is_calcio:
+t_h = c_t1.text_input("Squadra Casa", value="Bologna")
+t_o = c_t2.text_input("Squadra Ospite", value="Cagliari")
+icona = "⚽"
+elif is_hockey:
+t_h = c_t1.text_input("Squadra 1 (Casa/Pref)", value="Kazakistan")
+t_o = c_t2.text_input("Squadra 2 (Ospite/Sfav)", value="Ucraina")
+icona = "🏒"
+else:
+t_h = c_t1.text_input("Giocatore 1", value="Sinner J.")
+t_o = c_t2.text_input("Giocatore 2", value="Alcaraz C.")
+icona = "🎾"
+match_name = f"{icona} {t_h} - {t_o}"
+if c_btn.button("💾 SALVA INCONTRO", type="primary"):
+if match_name not in st.session_state.db:
+st.session_state.db[match_name] = []
+st.toast(f"Match di {sport} creato!")
+def add_to_db(pron):
+if match_name in st.session_state.db:
+st.session_state.db[match_name].append({'scelta': pron, 'esito': '⏳'})
+st.toast(f"Inviato: {pron}")
+else:
+st.error("Clicca prima su SALVA INCONTRO per creare la riga!")
+--- SIDEBAR DINAMICA ---
+st.sidebar.markdown("---")
+if is_calcio:
+st.sidebar.header("🏠 DATI CASA")
+c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", min_value=0, value=15)
+c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", min_value=0, value=10)
+c_g_s = st.sidebar.number_input("Partite Casa (Stagione)", min_value=1, value=8)
+st.sidebar.subheader("🔥 Forma (U5)")
+c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=8)
+c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=4)
+st.sidebar.markdown("---")
+st.sidebar.header("🚀 DATI OSPITE")
+o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", min_value=0, value=10)
+o_s_s = st.sidebar.number_input("Gol Subiti Ospite (Stagione)", min_value=0, value=18)
+o_g_s = st.sidebar.number_input("Partite Ospite (Stagione)", min_value=1, value=8)
+st.sidebar.subheader("🔥 Forma (U5)")
+o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=3)
+o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=9)
+code
+Code
+ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
+ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
+max_g = 6
+elif is_hockey:
+st.sidebar.markdown("### ⚙️ FORMATO CLASSIFICA HOCKEY")
+tipo_dati_hockey = st.sidebar.radio("", ["📊 Semplice (Mondiali/Coppe)", "🔥 Avanzata (Campionati)"])
+if tipo_dati_hockey == "📊 Semplice (Mondiali/Coppe)":
+st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
+h_pg = st.sidebar.number_input("Partite Giocate (PG)", min_value=1, value=4)
+h_gf = st.sidebar.number_input("Reti Fatte (R - Prima)", min_value=0, value=18)
+h_gs = st.sidebar.number_input("Reti Subite (R - Dopo)", min_value=0, value=7)
+st.sidebar.markdown("---")
+st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
+a_pg = st.sidebar.number_input("Partite Giocate (PG) ", min_value=1, value=4)
+a_gf = st.sidebar.number_input("Reti Fatte (R - Prima) ", min_value=0, value=11)
+a_gs = st.sidebar.number_input("Reti Subite (R - Dopo) ", min_value=0, value=11)
+ex_c = ((h_gf / h_pg) + (a_gs / a_pg)) / 2
+ex_o = ((a_gf / a_pg) + (h_gs / h_pg)) / 2
+else:
+st.sidebar.header(f"🔵 {t_h[:10].upper()} (In Casa)")
+c_f_s = st.sidebar.number_input("Gol Fatti Casa", min_value=0, value=15)
+c_s_s = st.sidebar.number_input("Gol Subiti Casa", min_value=0, value=10)
+c_g_s = st.sidebar.number_input("Partite Casa", min_value=1, value=5)
+st.sidebar.subheader("🔥 Forma (U5)")
+c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=12)
+c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=8)
+st.sidebar.markdown("---")
+st.sidebar.header(f"🔴 {t_o[:10].upper()} (In Trasferta)")
+o_f_s = st.sidebar.number_input("Gol Fatti Ospite", min_value=0, value=10)
+o_s_s = st.sidebar.number_input("Gol Subiti Ospite", min_value=0, value=18)
+o_g_s = st.sidebar.number_input("Partite Ospite", min_value=1, value=5)
+st.sidebar.subheader("🔥 Forma (U5)")
+o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=9)
+o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=14)
+ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
+ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
+max_g = 9
+elif is_tennis:
+# 🎾 INPUT TENNIS (BASATO SUI SET)
+st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
+c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=15)
+c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=10)
+c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=10)
+st.sidebar.subheader("🔥 Forma (U5)")
+c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9)
+c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=2)
+code
+Code
+st.sidebar.markdown("---")
+
+st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
+o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=12)
+o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=12)
+o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=10)
+st.sidebar.subheader("🔥 Forma (U5)")
+o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=7)
+o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=4)
+
+# Calcolo Poisson per i SET
+ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
+ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
+max_g = 3 # In tennis calcoliamo 0, 1 o 2 Set per giocatore
+Quota base per tutti
+st.sidebar.markdown("---")
+q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
+qx_b = st.sidebar.number_input("Quota X (Se non c'è, metti 1)", min_value=1.00, value=3.20 if is_calcio else (4.50 if is_hockey else 1.00), step=0.10)
+q2_b = st.sidebar.number_input("Quota 2", min_value=1.00, value=3.50, step=0.10)
+--- MATRICE E TABS ---
+st.title(f"🔬 SPORTS LAB PRO - MODULE: {sport.replace('⚽ ','').replace('🏒 ','').replace('🎾 ','')}")
+tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DATABASE HUB"])
+with tab1:
+code
+Code
 # ==========================================
 # ⚽/🏒 ZONA CALCIO E HOCKEY 
 # ==========================================
@@ -186,3 +349,58 @@ elif is_tennis:
     tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
     tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
     tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
+==========================================
+TAB 2 e 3 (Value Bet e Database Comuni a tutti)
+==========================================
+with tab2:
+if is_tennis:
+st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
+b1 = p1_vincente; b2 = p2_vincente; bx = 0
+qf1, qf2 = (100/b1 if b1>0 else 0), (100/b2 if b2>0 else 0)
+v1, v2 = st.columns(2)
+v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
+v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
+else:
+st.subheader("📊 Ricerca Value Bet (Power Rating)")
+vH = ex_c * 10; vA = ex_o * 10
+tot_v = vH + vA + (8 if is_hockey else 12)
+b1 = (vH / tot_v) * 100; b2 = (vA / tot_v) * 100; bx = 100 - b1 - b2
+qf1, qfx, qf2 = 100/b1, 100/bx, 100/b2
+v1, vx, v2 = st.columns(3)
+v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
+vx.metric("SEGNO X", f"QF: {qfx:.2f}", "✅ VALUE" if qx_b > qfx else "❌ NO")
+v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
+st.dataframe(pd.DataFrame({"Segno":["1","X","2"],"Prob Algoritmo":[b1,bx,b2],"Q Book":[q1_b,qx_b,q2_b]}).style.highlight_max(subset=["Prob Algoritmo"], color="#dcfce7").format({"Prob Algoritmo":"{:.2f}%"}), use_container_width=True)
+with tab3:
+st.subheader("📂 Tabella Database")
+st.markdown("<span style='color:gray; font-size:14px;'>Database unificato. I tasti WIN/LOSS salvano automaticamente.</span>", unsafe_allow_html=True)
+if st.session_state.db:
+for m, prs in list(st.session_state.db.items()):
+st.markdown("---")
+if not prs:
+col_m, col_m_del, _ = st.columns([2, 1, 7])
+col_m.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
+if col_m_del.button("🗑️ Rimuovi Partita", key=f"del_match_{m}"):
+del st.session_state.db[m]; st.rerun()
+else:
+cols = st.columns([2] + [3] * len(prs))
+with cols[0]:
+c_name, c_del = st.columns([3, 1])
+c_name.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
+if c_del.button("🗑️", key=f"del_m_{m}"):
+del st.session_state.db[m]; st.rerun()
+for idx, p in enumerate(prs):
+with cols[idx + 1]:
+cp_testo, cp_toggle, cp_cestino = st.columns([4, 3, 1.5])
+cp_testo.markdown(f"<div class='table-text'>{p['scelta']}</div>", unsafe_allow_html=True)
+esito = p['esito']
+if esito == '⏳':
+if cp_toggle.button("⚪ WAIT", key=f"tog_{m}{idx}"): st.session_state.db[m][idx]['esito'] = 'WIN'; st.rerun()
+elif esito == 'WIN':
+if cp_toggle.button("🟢 WIN", key=f"tog{m}{idx}"): st.session_state.db[m][idx]['esito'] = 'LOSS'; st.rerun()
+elif esito == 'LOSS':
+if cp_toggle.button("🔴 LOSS", key=f"tog{m}{idx}"): st.session_state.db[m][idx]['esito'] = '⏳'; st.rerun()
+if cp_cestino.button("🗑️", key=f"del_p{m}_{idx}"):
+st.session_state.db[m].pop(idx); st.rerun()
+else:
+st.info("Database vuoto. Salva un incontro e invia dei pronostici per iniziare.")
