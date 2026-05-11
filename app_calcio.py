@@ -16,20 +16,17 @@ st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
     h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.2rem !important; }
-    
     div[data-testid="stMetric"] {
         background-color: rgba(128, 128, 128, 0.05) !important;
         border: 1px solid rgba(128, 128, 128, 0.1) !important;
         padding: 4px 8px !important; border-radius: 6px !important;
     }
     div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold !important; }
-    
     button[kind="primary"] {
         background-color: #28a745 !important; color: white !important;
         font-weight: bold !important; border-radius: 6px !important;
         height: 38px !important; width: 100% !important; margin-top: 25px !important;
     }
-    
     hr { margin: 0.5em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
     .table-text { margin-top: 8px; font-size: 14px; font-weight: 500; }
     </style>
@@ -42,13 +39,12 @@ def poisson(lmbda, x):
 def w_avg(sf, r5, gs): 
     return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
 
-# --- FUNZIONE PARSER TESTO TENNIS (Il cuore del Copia-Incolla) ---
+# --- FUNZIONE PARSER TESTO TENNIS ---
 def analizza_testo_tennis(testo_incollato):
     if not testo_incollato or testo_incollato.strip() == "":
         return 0.5, 0, 0
     
     testo = testo_incollato.upper()
-    # Trova le V e le P isolate nella stringa incollata
     v_count = len(re.findall(r'\bV\b', testo))
     p_count = len(re.findall(r'\bP\b', testo))
     
@@ -102,7 +98,6 @@ def add_to_db(pron):
 st.sidebar.markdown("---")
 
 if is_calcio:
-    # ⚽ INPUT CALCIO (ORIGINALE E INTATTO)
     st.sidebar.header("🏠 DATI CASA")
     c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", min_value=0, value=15)
     c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", min_value=0, value=10)
@@ -126,7 +121,6 @@ if is_calcio:
     max_g = 6
 
 elif is_hockey:
-    # 🏒 INPUT HOCKEY (ORIGINALE E INTATTO)
     st.sidebar.markdown("### ⚙️ FORMATO CLASSIFICA HOCKEY")
     tipo_dati_hockey = st.sidebar.radio("", ["📊 Semplice (Mondiali/Coppe)", "🔥 Avanzata (Campionati)"])
     
@@ -135,17 +129,13 @@ elif is_hockey:
         h_pg = st.sidebar.number_input("Partite Giocate (PG)", min_value=1, value=4)
         h_gf = st.sidebar.number_input("Reti Fatte (R - Prima)", min_value=0, value=18)
         h_gs = st.sidebar.number_input("Reti Subite (R - Dopo)", min_value=0, value=7)
-        
         st.sidebar.markdown("---")
-        
         st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
         a_pg = st.sidebar.number_input("Partite Giocate (PG) ", min_value=1, value=4)
         a_gf = st.sidebar.number_input("Reti Fatte (R - Prima) ", min_value=0, value=11)
         a_gs = st.sidebar.number_input("Reti Subite (R - Dopo) ", min_value=0, value=11)
-        
         ex_c = ((h_gf / h_pg) + (a_gs / a_pg)) / 2
         ex_o = ((a_gf / a_pg) + (h_gs / h_pg)) / 2
-    
     else:
         st.sidebar.header(f"🔵 {t_h[:10].upper()} (In Casa)")
         c_f_s = st.sidebar.number_input("Gol Fatti Casa", min_value=0, value=15)
@@ -154,9 +144,7 @@ elif is_hockey:
         st.sidebar.subheader("🔥 Forma (U5)")
         c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=12)
         c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=8)
-        
         st.sidebar.markdown("---")
-        
         st.sidebar.header(f"🔴 {t_o[:10].upper()} (In Trasferta)")
         o_f_s = st.sidebar.number_input("Gol Fatti Ospite", min_value=0, value=10)
         o_s_s = st.sidebar.number_input("Gol Subiti Ospite", min_value=0, value=18)
@@ -164,14 +152,12 @@ elif is_hockey:
         st.sidebar.subheader("🔥 Forma (U5)")
         o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=9)
         o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=14)
-        
         ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
         ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
         
     max_g = 9 
 
 elif is_tennis:
-    # 🎾 INPUT TENNIS (NUOVO COPIA-INCOLLA AUTOMATICO)
     st.sidebar.header("📥 INCOLLA I DATI (Diretta.it)")
     st.sidebar.info("Evidenzia gli 'Ultimi Incontri' completi (con le icone V e P) e incollali qui sotto.")
     
@@ -182,7 +168,6 @@ elif is_tennis:
     st.sidebar.header("🌍 SUPERFICIE DI GIOCO")
     superficie = st.sidebar.selectbox("", ["Terra Rossa (Clay)", "Cemento (Hard)", "Erba (Grass)"])
 
-    # Elaborazione parser
     wr1, v1_count, p1_count = analizza_testo_tennis(testo_t1)
     wr2, v2_count, p2_count = analizza_testo_tennis(testo_t2)
 
@@ -200,7 +185,7 @@ tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DAT
 with tab1:
     
     # ==========================================
-    # ⚽/🏒 ZONA CALCIO E HOCKEY (INTATTA E SFILACCIATA COME IN ORIGINE)
+    # ⚽/🏒 ZONA CALCIO E HOCKEY 
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
@@ -229,17 +214,6 @@ with tab1:
                     ris.append({"Risultato": f"{h}-{a}", "Prob": p * 100, "QF": 1/p if p > 0 else 0})
             df_r = pd.DataFrame(ris).sort_values(by="Prob", ascending=False).head(10)
             st.dataframe(df_r.style.apply(lambda r: ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in scen else ['']*3, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=300 if is_hockey else 230, use_container_width=True)
-
-        st.subheader("💡 Scenari Esatti")
-        cs = st.columns(4)
-        for i, rn in enumerate(scen[:4]):
-            try:
-                pv = matrix[int(rn.split('-')[0]), int(rn.split('-')[1])] * 100
-                with cs[i]:
-                    st.metric("ESATTO", rn, delta=f"{pv:.1f}% (QF:{100/pv:.2f})")
-                    if st.button(f"📌 Invia {rn}", key=f"s_{i}"): 
-                        add_to_db(f"Esatto {rn}")
-            except: pass
 
         if is_calcio:
             st.subheader("🚀 Scenari Combo")
@@ -385,7 +359,7 @@ with tab1:
             c_combo[3].metric("X + Over 4.5", f"{cx_o45:.1f}%", f"QF:{100/cx_o45:.2f}" if cx_o45>0 else "0")
 
     # ==========================================
-    # 🎾 ZONA TENNIS (AUTO-PARSER COPIA E INCOLLA)
+    # 🎾 ZONA TENNIS (AUTO-PARSER COPIA E INCOLLA + GAMES)
     # ==========================================
     elif is_tennis:
         st.info("🧠 **ENGINE: REVERSE PARSER & MARKOV CHAIN** | Dati estratti automaticamente dal copia-incolla.")
@@ -396,30 +370,87 @@ with tab1:
             
         st.write(f"📊 Dati Rilevati: **{t_h}** ({v1_count} Vinte, {p1_count} Perse) | **{t_o}** ({v2_count} Vinte, {p2_count} Perse)")
         
+        # Calcolo Win Rate
         diff_forza = wr1 - wr2 
         true_p1 = 0.5 + (diff_forza * 0.45) 
-        
         if superficie == "Terra Rossa (Clay)": true_p1 = 0.5 + (true_p1 - 0.5) * 0.85
         elif superficie == "Erba (Grass)": true_p1 = 0.5 + (true_p1 - 0.5) * 1.15
-        
         if true_p1 > 0.95: true_p1 = 0.95
         if true_p1 < 0.05: true_p1 = 0.05
         true_p2 = 1 - true_p1
         
+        # Set Betting
         prob_set1 = 0.5 + (true_p1 - 0.5) * 0.8
         prob_set2 = 1 - prob_set1
-        
         s_20 = (prob_set1 ** 2) * 100
         s_21 = (2 * (prob_set1 ** 2) * prob_set2) * 100
         s_02 = (prob_set2 ** 2) * 100
         s_12 = (2 * (prob_set2 ** 2) * prob_set1) * 100
-        
         over_25_set = s_21 + s_12
         under_25_set = s_20 + s_02
 
+        # =======================================
+        # IL NUOVO MOTORE DEI RISULTATI ESATTI DEL 1° SET
+        # =======================================
+        # Calcoliamo la probabilità di vincere un singolo game
+        p_game_1 = 0.5 + (true_p1 - 0.5) * 0.4
+        p_game_2 = 1 - p_game_1
+        
+        # Formule semplificate per i risultati esatti di un Set (6-x)
+        # Più un giocatore è forte, più sono probabili i 6-1 e 6-2. 
+        # Più i giocatori sono in equilibrio, più sale il 7-6.
+        equilibrio = 1 - abs(p_game_1 - p_game_2)
+        
+        # Probabilità di base (si sommano a 100 per un singolo set)
+        set_60 = (p_game_1 ** 6) * 100
+        set_61 = 6 * (p_game_1 ** 6) * p_game_2 * 100
+        set_62 = 21 * (p_game_1 ** 6) * (p_game_2 ** 2) * 100
+        set_63 = 56 * (p_game_1 ** 6) * (p_game_2 ** 3) * 100
+        set_64 = 126 * (p_game_1 ** 6) * (p_game_2 ** 4) * 100
+        set_75 = 252 * (p_game_1 ** 7) * (p_game_2 ** 5) * 100
+        
+        # Calcolo speculare per il Giocatore 2
+        set_06 = (p_game_2 ** 6) * 100
+        set_16 = 6 * (p_game_2 ** 6) * p_game_1 * 100
+        set_26 = 21 * (p_game_2 ** 6) * (p_game_1 ** 2) * 100
+        set_36 = 56 * (p_game_2 ** 6) * (p_game_1 ** 3) * 100
+        set_46 = 126 * (p_game_2 ** 6) * (p_game_1 ** 4) * 100
+        set_57 = 252 * (p_game_2 ** 7) * (p_game_1 ** 5) * 100
+
+        # Fattore Tie-Break calcolato dalla superficie e dall'equilibrio
+        base_tb = 0.15 
+        game_line = 21.5
+        if superficie == "Cemento (Hard)": base_tb = 0.20; game_line = 22.5
+        elif superficie == "Erba (Grass)": base_tb = 0.26; game_line = 22.5
+        
+        prob_tb_totale = (base_tb * equilibrio * 1.5) * 100
+        set_76 = prob_tb_totale * (p_game_1) # Quota del tie-break che va al G1
+        set_67 = prob_tb_totale * (p_game_2) # Quota del tie-break che va al G2
+
+        # Normalizzazione matematica per fare in modo che la somma faccia 100%
+        tot_1st_set = set_60 + set_61 + set_62 + set_63 + set_64 + set_75 + set_76 + set_06 + set_16 + set_26 + set_36 + set_46 + set_57 + set_67
+        
+        # Creiamo la lista per la nuova tabella
+        ris_1set = [
+            ("6-0", t_h, (set_60/tot_1st_set)*100),
+            ("6-1", t_h, (set_61/tot_1st_set)*100),
+            ("6-2", t_h, (set_62/tot_1st_set)*100),
+            ("6-3", t_h, (set_63/tot_1st_set)*100),
+            ("6-4", t_h, (set_64/tot_1st_set)*100),
+            ("7-5", t_h, (set_75/tot_1st_set)*100),
+            ("7-6", t_h, (set_76/tot_1st_set)*100),
+            ("0-6", t_o, (set_06/tot_1st_set)*100),
+            ("1-6", t_o, (set_16/tot_1st_set)*100),
+            ("2-6", t_o, (set_26/tot_1st_set)*100),
+            ("3-6", t_o, (set_36/tot_1st_set)*100),
+            ("4-6", t_o, (set_46/tot_1st_set)*100),
+            ("5-7", t_o, (set_57/tot_1st_set)*100),
+            ("6-7", t_o, (set_67/tot_1st_set)*100)
+        ]
+
         col_t1, col_t2 = st.columns([1.5, 2])
         with col_t1:
-            st.subheader("🎯 Set Betting (Risultato Esatto)")
+            st.subheader("🎯 Set Betting (Risultato Match)")
             df_sets = pd.DataFrame({
                 "Risultato": ["2-0", "2-1", "0-2", "1-2"],
                 "Vincitore": [t_h, t_h, t_o, t_o],
@@ -428,19 +459,20 @@ with tab1:
             }).sort_values(by="Probabilità", ascending=False)
             st.dataframe(df_sets.style.apply(lambda r: ['background-color: #ffeb3b; color: black; font-weight: bold']*4 if r.name == df_sets.index[0] else ['']*4, axis=1), hide_index=True, use_container_width=True)
 
+            # NUOVA TABELLA RISULTATI ESATTI 1° SET
+            st.subheader("🎾 Risultato Esatto 1° Set")
+            df_1set = pd.DataFrame(ris_1set, columns=["Risultato", "Vincitore", "Prob"]).sort_values(by="Prob", ascending=False).head(5)
+            df_1set["Probabilità"] = df_1set["Prob"].apply(lambda x: f"{x:.1f}%")
+            df_1set["Quota Fiera"] = df_1set["Prob"].apply(lambda x: f"{100/x:.2f}" if x>0 else "0")
+            df_1set = df_1set.drop(columns=["Prob"])
+            st.dataframe(df_1set, hide_index=True, use_container_width=True)
+
         with col_t2:
             st.subheader("🎾 Testa a Testa (Match)")
             tm1 = st.columns(2)
             tm1[0].metric(f"Vittoria {t_h[:8].upper()}", f"{(true_p1*100):.1f}%", f"QF:{1/true_p1:.2f}")
             tm1[1].metric(f"Vittoria {t_o[:8].upper()}", f"{(true_p2*100):.1f}%", f"QF:{1/true_p2:.2f}")
             
-            base_tb = 0.15 
-            game_line = 21.5
-            if superficie == "Cemento (Hard)": base_tb = 0.20; game_line = 22.5
-            elif superficie == "Erba (Grass)": base_tb = 0.26; game_line = 22.5
-            
-            equilibrio = 1 - abs(true_p1 - true_p2)
-            prob_tb = (base_tb * equilibrio * 1.5) * 100
             prob_over = (40 + (equilibrio * 25) + (base_tb * 50))
             if prob_over > 85: prob_over = 85
             prob_under = 100 - prob_over
@@ -448,17 +480,17 @@ with tab1:
             st.markdown("---")
             st.subheader("⏱️ Under/Over Games & Tie-Break")
             tm2 = st.columns(3)
-            tm2[0].metric("TIE-BREAK NEL MATCH (Sì)", f"{prob_tb:.1f}%", f"QF:{100/prob_tb:.2f}")
+            tm2[0].metric("TIE-BREAK NEL MATCH (Sì)", f"{prob_tb_totale:.1f}%", f"QF:{100/prob_tb_totale:.2f}" if prob_tb_totale>0 else "0")
             tm2[1].metric(f"OVER {game_line} Games", f"{prob_over:.1f}%", f"QF:{100/prob_over:.2f}")
             tm2[2].metric(f"UNDER {game_line} Games", f"{prob_under:.1f}%", f"QF:{100/prob_under:.2f}")
 
         st.markdown("---")
         st.subheader("⚖️ Set Totali & Handicap Set")
         tc1 = st.columns(4)
-        tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
-        tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
-        tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
-        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02+s_12+s_21)>0 else "0")
+        tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}")
+        tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}")
+        tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}")
+        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}")
 
 # ==========================================
 # TAB 2 e 3 (Value Bet e Database Comuni)
@@ -466,10 +498,8 @@ with tab1:
 with tab2:
     if is_tennis:
         st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
-        b1 = true_p1 * 100
-        b2 = true_p2 * 100
-        qf1 = 100/b1 if b1>0 else 0
-        qf2 = 100/b2 if b2>0 else 0
+        b1 = true_p1 * 100; b2 = true_p2 * 100; bx = 0
+        qf1, qf2 = (100/b1 if b1>0 else 0), (100/b2 if b2>0 else 0)
         v1, v2 = st.columns(2)
         v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
         v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
