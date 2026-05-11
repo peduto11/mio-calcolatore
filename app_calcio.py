@@ -2,6 +2,7 @@ import streamlit as st
 import math
 import pandas as pd
 import numpy as np
+import re
 
 # Configurazione Pagina
 st.set_page_config(page_title="SPORTS LAB PRO", page_icon="🔬", layout="wide")
@@ -41,6 +42,23 @@ def poisson(lmbda, x):
 def w_avg(sf, r5, gs): 
     return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
 
+# --- FUNZIONE PARSER TESTO TENNIS (Il cuore del Copia-Incolla) ---
+def analizza_testo_tennis(testo_incollato):
+    if not testo_incollato or testo_incollato.strip() == "":
+        return 0.5, 0, 0
+    
+    testo = testo_incollato.upper()
+    # Trova le V e le P isolate nella stringa incollata
+    v_count = len(re.findall(r'\bV\b', testo))
+    p_count = len(re.findall(r'\bP\b', testo))
+    
+    tot_match = v_count + p_count
+    if tot_match == 0:
+        return 0.5, 0, 0
+    
+    win_rate = v_count / tot_match
+    return win_rate, v_count, p_count
+
 # --- SELETTORE SPORT (SIDEBAR) ---
 st.sidebar.markdown("### 🔬 SELEZIONA SPORT")
 sport = st.sidebar.radio("", ["⚽ CALCIO", "🏒 HOCKEY", "🎾 TENNIS"], horizontal=True)
@@ -52,6 +70,7 @@ is_tennis = sport == "🎾 TENNIS"
 # --- REGISTRAZIONE INCONTRO ---
 st.write(f"### 📝 REGISTRAZIONE INCONTRO ({sport})")
 c_t1, c_t2, c_btn = st.columns([3, 3, 1.5])
+
 if is_calcio:
     t_h = c_t1.text_input("Squadra Casa", value="Bologna")
     t_o = c_t2.text_input("Squadra Ospite", value="Cagliari")
@@ -83,6 +102,7 @@ def add_to_db(pron):
 st.sidebar.markdown("---")
 
 if is_calcio:
+    # ⚽ INPUT CALCIO (ORIGINALE E INTATTO)
     st.sidebar.header("🏠 DATI CASA")
     c_f_s = st.sidebar.number_input("Gol Fatti Casa (Stagione)", min_value=0, value=15)
     c_s_s = st.sidebar.number_input("Gol Subiti Casa (Stagione)", min_value=0, value=10)
@@ -90,7 +110,9 @@ if is_calcio:
     st.sidebar.subheader("🔥 Forma (U5)")
     c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=8)
     c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=4)
+    
     st.sidebar.markdown("---")
+    
     st.sidebar.header("🚀 DATI OSPITE")
     o_f_s = st.sidebar.number_input("Gol Fatti Ospite (Stagione)", min_value=0, value=10)
     o_s_s = st.sidebar.number_input("Gol Subiti Ospite (Stagione)", min_value=0, value=18)
@@ -104,20 +126,26 @@ if is_calcio:
     max_g = 6
 
 elif is_hockey:
+    # 🏒 INPUT HOCKEY (ORIGINALE E INTATTO)
     st.sidebar.markdown("### ⚙️ FORMATO CLASSIFICA HOCKEY")
     tipo_dati_hockey = st.sidebar.radio("", ["📊 Semplice (Mondiali/Coppe)", "🔥 Avanzata (Campionati)"])
+    
     if tipo_dati_hockey == "📊 Semplice (Mondiali/Coppe)":
         st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
         h_pg = st.sidebar.number_input("Partite Giocate (PG)", min_value=1, value=4)
         h_gf = st.sidebar.number_input("Reti Fatte (R - Prima)", min_value=0, value=18)
         h_gs = st.sidebar.number_input("Reti Subite (R - Dopo)", min_value=0, value=7)
+        
         st.sidebar.markdown("---")
+        
         st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
         a_pg = st.sidebar.number_input("Partite Giocate (PG) ", min_value=1, value=4)
         a_gf = st.sidebar.number_input("Reti Fatte (R - Prima) ", min_value=0, value=11)
         a_gs = st.sidebar.number_input("Reti Subite (R - Dopo) ", min_value=0, value=11)
+        
         ex_c = ((h_gf / h_pg) + (a_gs / a_pg)) / 2
         ex_o = ((a_gf / a_pg) + (h_gs / h_pg)) / 2
+    
     else:
         st.sidebar.header(f"🔵 {t_h[:10].upper()} (In Casa)")
         c_f_s = st.sidebar.number_input("Gol Fatti Casa", min_value=0, value=15)
@@ -126,7 +154,9 @@ elif is_hockey:
         st.sidebar.subheader("🔥 Forma (U5)")
         c_f_5 = st.sidebar.number_input("Gol Fatti (U5 Casa)", min_value=0, value=12)
         c_s_5 = st.sidebar.number_input("Gol Subiti (U5 Casa)", min_value=0, value=8)
+        
         st.sidebar.markdown("---")
+        
         st.sidebar.header(f"🔴 {t_o[:10].upper()} (In Trasferta)")
         o_f_s = st.sidebar.number_input("Gol Fatti Ospite", min_value=0, value=10)
         o_s_s = st.sidebar.number_input("Gol Subiti Ospite", min_value=0, value=18)
@@ -134,40 +164,34 @@ elif is_hockey:
         st.sidebar.subheader("🔥 Forma (U5)")
         o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=9)
         o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=14)
+        
         ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
         ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
+        
     max_g = 9 
 
 elif is_tennis:
-    # 🎾 INPUT TENNIS (BASATO SUI SET)
-    st.sidebar.header(f"🔵 DATI {t_h[:10].upper()}")
-    c_f_s = st.sidebar.number_input("Set VINTI (Stagione)", min_value=0, value=15)
-    c_s_s = st.sidebar.number_input("Set PERSI (Stagione)", min_value=0, value=10)
-    c_g_s = st.sidebar.number_input("Partite Giocate", min_value=1, value=10)
-    st.sidebar.subheader("🔥 Forma (U5)")
-    c_f_5 = st.sidebar.number_input("Set VINTI (U5)", min_value=0, value=9) 
-    c_s_5 = st.sidebar.number_input("Set PERSI (U5)", min_value=0, value=2)
+    # 🎾 INPUT TENNIS (NUOVO COPIA-INCOLLA AUTOMATICO)
+    st.sidebar.header("📥 INCOLLA I DATI (Diretta.it)")
+    st.sidebar.info("Evidenzia gli 'Ultimi Incontri' completi (con le icone V e P) e incollali qui sotto.")
+    
+    testo_t1 = st.sidebar.text_area(f"Copia-Incolla {t_h[:10]}", height=150)
+    testo_t2 = st.sidebar.text_area(f"Copia-Incolla {t_o[:10]}", height=150)
     
     st.sidebar.markdown("---")
-    
-    st.sidebar.header(f"🔴 DATI {t_o[:10].upper()}")
-    o_f_s = st.sidebar.number_input("Set VINTI (Stagione Ospite)", min_value=0, value=12)
-    o_s_s = st.sidebar.number_input("Set PERSI (Stagione Ospite)", min_value=0, value=12)
-    o_g_s = st.sidebar.number_input("Partite Giocate Ospite", min_value=1, value=10)
-    st.sidebar.subheader("🔥 Forma (U5)")
-    o_f_5 = st.sidebar.number_input("Set VINTI (U5 Ospite)", min_value=0, value=7)
-    o_s_5 = st.sidebar.number_input("Set PERSI (U5 Ospite)", min_value=0, value=4)
-    
-    # Calcolo Poisson per i SET
-    ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
-    ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
-    max_g = 3 # In tennis calcoliamo 0, 1 o 2 Set per giocatore
+    st.sidebar.header("🌍 SUPERFICIE DI GIOCO")
+    superficie = st.sidebar.selectbox("", ["Terra Rossa (Clay)", "Cemento (Hard)", "Erba (Grass)"])
 
-# Quota base per tutti
+    # Elaborazione parser
+    wr1, v1_count, p1_count = analizza_testo_tennis(testo_t1)
+    wr2, v2_count, p2_count = analizza_testo_tennis(testo_t2)
+
+# --- QUOTE BASE COMUNI ---
 st.sidebar.markdown("---")
-q1_b = st.sidebar.number_input("Quota 1", min_value=1.00, value=2.00, step=0.10)
-qx_b = st.sidebar.number_input("Quota X (Se non c'è, metti 1)", min_value=1.00, value=3.20 if is_calcio else (4.50 if is_hockey else 1.00), step=0.10)
-q2_b = st.sidebar.number_input("Quota 2", min_value=1.00, value=3.50, step=0.10)
+q1_b = st.sidebar.number_input("Quota 1 Bookmaker", min_value=1.00, value=2.00, step=0.10)
+if not is_tennis: 
+    qx_b = st.sidebar.number_input("Quota X", min_value=1.00, value=3.20 if is_calcio else 4.50, step=0.10)
+q2_b = st.sidebar.number_input("Quota 2 Bookmaker", min_value=1.00, value=3.50, step=0.10)
 
 # --- MATRICE E TABS ---
 st.title(f"🔬 SPORTS LAB PRO - MODULE: {sport.replace('⚽ ','').replace('🏒 ','').replace('🎾 ','')}")
@@ -176,14 +200,18 @@ tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DAT
 with tab1:
     
     # ==========================================
-    # ⚽/🏒 ZONA CALCIO E HOCKEY 
+    # ⚽/🏒 ZONA CALCIO E HOCKEY (INTATTA E SFILACCIATA COME IN ORIGINE)
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
         matrix = np.zeros((max_g, max_g))
-        pc = [poisson(ex_c, i) for i in range(max_g)]; po = [poisson(ex_o, i) for i in range(max_g)]
+        pc = [poisson(ex_c, i) for i in range(max_g)]
+        po = [poisson(ex_o, i) for i in range(max_g)]
+        
         for h in range(max_g):
-            for a in range(max_g): matrix[h, a] = pc[h] * po[a]
+            for a in range(max_g): 
+                matrix[h, a] = pc[h] * po[a]
+                
         scen = list(dict.fromkeys([f"{int(round(ex_c))}-{int(round(ex_o))}", f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", f"{int(math.floor(ex_c))}-{int(math.ceil(ex_o))}"]))
 
         c_c1, c_c2 = st.columns([2, 1.2])
@@ -191,6 +219,7 @@ with tab1:
             st.subheader("📊 Matrice Probabilità")
             cmap_color = 'Blues' if is_hockey else 'Greens'
             st.dataframe(pd.DataFrame(matrix * 100, index=[f"C{i}" for i in range(max_g)], columns=[f"O{i}" for i in range(max_g)]).style.format("{:.1f}%").background_gradient(cmap=cmap_color, axis=None), height=300 if is_hockey else 230)
+        
         with c_c2:
             st.subheader("🎯 Classifica Risultati")
             ris = []
@@ -208,38 +237,64 @@ with tab1:
                 pv = matrix[int(rn.split('-')[0]), int(rn.split('-')[1])] * 100
                 with cs[i]:
                     st.metric("ESATTO", rn, delta=f"{pv:.1f}% (QF:{100/pv:.2f})")
-                    if st.button(f"📌 Invia {rn}", key=f"s_{i}"): add_to_db(f"Esatto {rn}")
+                    if st.button(f"📌 Invia {rn}", key=f"s_{i}"): 
+                        add_to_db(f"Esatto {rn}")
             except: pass
 
         if is_calcio:
             st.subheader("🚀 Scenari Combo")
-            def gp(cmin, cmax, omin, omax): return sum(matrix[h, a] for h in range(cmin, cmax+1) for a in range(omin, omax+1) if h<max_g and a<max_g) * 100
+            def gp(cmin, cmax, omin, omax): 
+                return sum(matrix[h, a] for h in range(cmin, cmax+1) for a in range(omin, omax+1) if h<max_g and a<max_g) * 100
+            
             rc = (0,1) if ex_c < 1.2 else (1,3) if ex_c < 2.2 else (2,4)
             ro = (0,1) if ex_o < 1.2 else (1,3) if ex_o < 2.2 else (2,4)
             cb = st.columns(3)
-            p_bi, n_bi = gp(rc[0], rc[1], ro[0], ro[1]), f"T1 {rc[0]}-{rc[1]} + T2 {ro[0]}-{ro[1]}"
+            
+            p_bi = gp(rc[0], rc[1], ro[0], ro[1])
+            n_bi = f"T1 {rc[0]}-{rc[1]} + T2 {ro[0]}-{ro[1]}"
             with cb[0]:
                 st.metric("BILANCIATO", n_bi, delta=f"{p_bi:.1f}% (QF:{100/p_bi:.2f})" if p_bi>0 else "0")
                 if st.button("📌 Invia Bil"): add_to_db(f"Bil: {n_bi}")
-            if ex_c >= ex_o: lab_d, n_d, p_d = "DOMINIO T1", f"T1 {rc[0]}-{rc[1]} + T2 0-1", gp(rc[0], rc[1], 0, 1)
-            else: lab_d, n_d, p_d = "DOMINIO T2", f"T1 0-1 + T2 {ro[0]}-{ro[1]}", gp(0, 1, ro[0], ro[1])
+                
+            if ex_c >= ex_o: 
+                lab_d = "DOMINIO T1"
+                n_d = f"T1 {rc[0]}-{rc[1]} + T2 0-1"
+                p_d = gp(rc[0], rc[1], 0, 1)
+            else: 
+                lab_d = "DOMINIO T2"
+                n_d = f"T1 0-1 + T2 {ro[0]}-{ro[1]}"
+                p_d = gp(0, 1, ro[0], ro[1])
+                
             with cb[1]:
                 st.metric(lab_d, n_d, delta=f"{p_d:.1f}% (QF:{100/p_d:.2f})" if p_d>0 else "0")
                 if st.button(f"📌 Invia Dom"): add_to_db(f"Dom: {n_d}")
+                
             p_go = gp(1, 3, 1, 3)
             with cb[2]:
                 st.metric("COMBO GOAL", "T1 1-3 + T2 1-3", delta=f"{p_go:.1f}% (QF:{100/p_go:.2f})" if p_go>0 else "0")
                 if st.button("📌 Invia Combo Goal"): add_to_db(f"Combo Goal: T1 1-3 + T2 1-3")
 
             st.subheader("📈 Mercati Principali")
-            p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
-            def gmm(l, h): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
-            def over_prob(line): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
+            p1 = np.sum(np.tril(matrix, -1))*100
+            px = np.trace(matrix)*100
+            p2 = np.sum(np.triu(matrix, 1))*100
+            
+            def gmm(l, h): 
+                return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
+            def over_prob(line): 
+                return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
             
             mc = st.columns(6)
-            mc[0].metric("1", f"{p1:.1f}%", f"QF:{100/p1:.2f}"); mc[1].metric("X", f"{px:.1f}%", f"QF:{100/px:.2f}"); mc[2].metric("2", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
-            ov, pg = over_prob(2.5), sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
-            mc[3].metric("O2.5", f"{ov:.1f}%", f"QF:{100/ov:.2f}"); mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}"); mc[5].metric("NO G", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
+            mc[0].metric("1", f"{p1:.1f}%", f"QF:{100/p1:.2f}")
+            mc[1].metric("X", f"{px:.1f}%", f"QF:{100/px:.2f}")
+            mc[2].metric("2", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
+            
+            ov = over_prob(2.5)
+            pg = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
+            
+            mc[3].metric("O2.5", f"{ov:.1f}%", f"QF:{100/ov:.2f}")
+            mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}")
+            mc[5].metric("NO G", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
             
             cmg = st.columns(4)
             for i, mg in enumerate([(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]):
@@ -260,14 +315,20 @@ with tab1:
                     st.metric(f"T2 {l}-{h}", f"{pr:.1f}%", f"QF:{100/pr*100:.2f}" if pr>0 else "0")
             with cd3:
                 st.write("**⚖️ DOPPIA CHANCE**")
-                st.metric("1X", f"{(p1+px):.1f}%", f"QF:{100/(p1+px):.2f}"); st.metric("X2", f"{(p2+px):.1f}%", f"QF:{100/(p2+px):.2f}"); st.metric("12", f"{(p1+p2):.1f}%", f"QF:{100/(p1+p2):.2f}")
+                st.metric("1X", f"{(p1+px):.1f}%", f"QF:{100/(p1+px):.2f}")
+                st.metric("X2", f"{(p2+px):.1f}%", f"QF:{100/(p2+px):.2f}")
+                st.metric("12", f"{(p1+p2):.1f}%", f"QF:{100/(p1+p2):.2f}")
 
         elif is_hockey:
-            p1, px, p2 = np.sum(np.tril(matrix, -1))*100, np.trace(matrix)*100, np.sum(np.triu(matrix, 1))*100
+            p1 = np.sum(np.tril(matrix, -1))*100
+            px = np.trace(matrix)*100
+            p2 = np.sum(np.triu(matrix, 1))*100
+            
             st.subheader("🎯 Margine Vittoria (Tempi Regolamentari)")
             t1_1g = sum(matrix[i, i-1] for i in range(1, max_g)) * 100
             t1_2g = sum(matrix[i, i-2] for i in range(2, max_g)) * 100
             t1_3pg = sum(matrix[i, j] for i in range(3, max_g) for j in range(max_g) if i - j >= 3) * 100
+            
             t2_1g = sum(matrix[i-1, i] for i in range(1, max_g)) * 100
             t2_2g = sum(matrix[i-2, i] for i in range(2, max_g)) * 100
             t2_3pg = sum(matrix[i, j] for j in range(3, max_g) for i in range(max_g) if j - i >= 3) * 100
@@ -277,6 +338,7 @@ with tab1:
             rm1[1].metric(f"{t_h[:8].upper()} DI 2 GOAL", f"{t1_2g:.1f}%", f"QF:{100/t1_2g:.2f}" if t1_2g>0 else "0")
             rm1[2].metric(f"{t_h[:8].upper()} DI 3+ GOAL", f"{t1_3pg:.1f}%", f"QF:{100/t1_3pg:.2f}" if t1_3pg>0 else "0")
             rm1[3].metric("PAREGGIO (X)", f"{px:.1f}%", f"QF:{100/px:.2f}" if px>0 else "0")
+            
             rm2 = st.columns(4)
             rm2[0].metric(f"{t_o[:8].upper()} DI 1 GOAL", f"{t2_1g:.1f}%", f"QF:{100/t2_1g:.2f}" if t2_1g>0 else "0")
             rm2[1].metric(f"{t_o[:8].upper()} DI 2 GOAL", f"{t2_2g:.1f}%", f"QF:{100/t2_2g:.2f}" if t2_2g>0 else "0")
@@ -284,8 +346,10 @@ with tab1:
 
             st.markdown("---")
             st.subheader("⚖️ Testa a Testa (Incl. OT) & Handicap (Puck Line)")
-            tt_1 = p1 + (px / 2); tt_2 = p2 + (px / 2)
-            hc_t1_minus15 = t1_2g + t1_3pg; hc_t2_plus15 = p2 + px + t1_1g
+            tt_1 = p1 + (px / 2)
+            tt_2 = p2 + (px / 2)
+            hc_t1_minus15 = t1_2g + t1_3pg
+            hc_t2_plus15 = p2 + px + t1_1g
             
             ctt = st.columns(4)
             ctt[0].metric(f"T/T 1 ({t_h[:8]})", f"{tt_1:.1f}%", f"QF:{100/tt_1:.2f}" if tt_1>0 else "0")
@@ -295,8 +359,11 @@ with tab1:
 
             st.markdown("---")
             st.subheader("🚀 Mercati Principali & Combo Hockey")
-            def over_prob(line): return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
-            o45, o55 = over_prob(4.5), over_prob(5.5)
+            def over_prob(line): 
+                return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
+            
+            o45 = over_prob(4.5)
+            o55 = over_prob(5.5)
             
             c1_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a > 4.5) * 100
             c1_u55 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h > a and h+a < 5.5) * 100
@@ -304,8 +371,12 @@ with tab1:
             cx_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h == a and h+a > 4.5) * 100
 
             mch = st.columns(6)
-            mch[0].metric("1 (Reg Time)", f"{p1:.1f}%", f"QF:{100/p1:.2f}"); mch[1].metric("X (Reg Time)", f"{px:.1f}%", f"QF:{100/px:.2f}"); mch[2].metric("2 (Reg Time)", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
-            mch[3].metric("OVER 4.5", f"{o45:.1f}%", f"QF:{100/o45:.2f}" if o45>0 else "0"); mch[4].metric("OVER 5.5", f"{o55:.1f}%", f"QF:{100/o55:.2f}" if o55>0 else "0"); mch[5].metric("UNDER 5.5", f"{(100-o55):.1f}%", f"QF:{100/(100-o55):.2f}" if (100-o55)>0 else "0")
+            mch[0].metric("1 (Reg Time)", f"{p1:.1f}%", f"QF:{100/p1:.2f}")
+            mch[1].metric("X (Reg Time)", f"{px:.1f}%", f"QF:{100/px:.2f}")
+            mch[2].metric("2 (Reg Time)", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
+            mch[3].metric("OVER 4.5", f"{o45:.1f}%", f"QF:{100/o45:.2f}" if o45>0 else "0")
+            mch[4].metric("OVER 5.5", f"{o55:.1f}%", f"QF:{100/o55:.2f}" if o55>0 else "0")
+            mch[5].metric("UNDER 5.5", f"{(100-o55):.1f}%", f"QF:{100/(100-o55):.2f}" if (100-o55)>0 else "0")
             
             c_combo = st.columns(4)
             c_combo[0].metric("1 + Over 4.5", f"{c1_o45:.1f}%", f"QF:{100/c1_o45:.2f}" if c1_o45>0 else "0")
@@ -314,32 +385,39 @@ with tab1:
             c_combo[3].metric("X + Over 4.5", f"{cx_o45:.1f}%", f"QF:{100/cx_o45:.2f}" if cx_o45>0 else "0")
 
     # ==========================================
-    # 🎾 ZONA TENNIS (MOTORE SET POISSON)
+    # 🎾 ZONA TENNIS (AUTO-PARSER COPIA E INCOLLA)
     # ==========================================
     elif is_tennis:
-        st.info(f"📊 Set Attesi (xS): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
+        st.info("🧠 **ENGINE: REVERSE PARSER & MARKOV CHAIN** | Dati estratti automaticamente dal copia-incolla.")
         
-        raw_20 = poisson(ex_c, 2) * poisson(ex_o, 0)
-        raw_21 = poisson(ex_c, 2) * poisson(ex_o, 1)
-        raw_02 = poisson(ex_c, 0) * poisson(ex_o, 2)
-        raw_12 = poisson(ex_c, 1) * poisson(ex_o, 2)
+        if v1_count == 0 and p1_count == 0 and v2_count == 0 and p2_count == 0:
+            st.warning("👈 Incolla i dati 'Ultimi Incontri' (con le V e le P) nella barra laterale per avviare il calcolo automatico.")
+            st.stop()
+            
+        st.write(f"📊 Dati Rilevati: **{t_h}** ({v1_count} Vinte, {p1_count} Perse) | **{t_o}** ({v2_count} Vinte, {p2_count} Perse)")
         
-        tot_raw = raw_20 + raw_21 + raw_02 + raw_12
-        if tot_raw == 0: tot_raw = 0.0001
+        diff_forza = wr1 - wr2 
+        true_p1 = 0.5 + (diff_forza * 0.45) 
         
-        s_20 = (raw_20 / tot_raw) * 100
-        s_21 = (raw_21 / tot_raw) * 100
-        s_02 = (raw_02 / tot_raw) * 100
-        s_12 = (raw_12 / tot_raw) * 100
+        if superficie == "Terra Rossa (Clay)": true_p1 = 0.5 + (true_p1 - 0.5) * 0.85
+        elif superficie == "Erba (Grass)": true_p1 = 0.5 + (true_p1 - 0.5) * 1.15
         
-        p1_vincente = s_20 + s_21
-        p2_vincente = s_02 + s_12
+        if true_p1 > 0.95: true_p1 = 0.95
+        if true_p1 < 0.05: true_p1 = 0.05
+        true_p2 = 1 - true_p1
+        
+        prob_set1 = 0.5 + (true_p1 - 0.5) * 0.8
+        prob_set2 = 1 - prob_set1
+        
+        s_20 = (prob_set1 ** 2) * 100
+        s_21 = (2 * (prob_set1 ** 2) * prob_set2) * 100
+        s_02 = (prob_set2 ** 2) * 100
+        s_12 = (2 * (prob_set2 ** 2) * prob_set1) * 100
         
         over_25_set = s_21 + s_12
         under_25_set = s_20 + s_02
 
-        col_t1, col_t2 = st.columns([2, 1.2])
-        
+        col_t1, col_t2 = st.columns([1.5, 2])
         with col_t1:
             st.subheader("🎯 Set Betting (Risultato Esatto)")
             df_sets = pd.DataFrame({
@@ -352,26 +430,46 @@ with tab1:
 
         with col_t2:
             st.subheader("🎾 Testa a Testa (Match)")
-            st.metric(f"VITTORIA {t_h[:8].upper()}", f"{p1_vincente:.1f}%", f"QF: {100/p1_vincente:.2f}" if p1_vincente>0 else "0")
-            st.metric(f"VITTORIA {t_o[:8].upper()}", f"{p2_vincente:.1f}%", f"QF: {100/p2_vincente:.2f}" if p2_vincente>0 else "0")
+            tm1 = st.columns(2)
+            tm1[0].metric(f"Vittoria {t_h[:8].upper()}", f"{(true_p1*100):.1f}%", f"QF:{1/true_p1:.2f}")
+            tm1[1].metric(f"Vittoria {t_o[:8].upper()}", f"{(true_p2*100):.1f}%", f"QF:{1/true_p2:.2f}")
+            
+            base_tb = 0.15 
+            game_line = 21.5
+            if superficie == "Cemento (Hard)": base_tb = 0.20; game_line = 22.5
+            elif superficie == "Erba (Grass)": base_tb = 0.26; game_line = 22.5
+            
+            equilibrio = 1 - abs(true_p1 - true_p2)
+            prob_tb = (base_tb * equilibrio * 1.5) * 100
+            prob_over = (40 + (equilibrio * 25) + (base_tb * 50))
+            if prob_over > 85: prob_over = 85
+            prob_under = 100 - prob_over
+            
+            st.markdown("---")
+            st.subheader("⏱️ Under/Over Games & Tie-Break")
+            tm2 = st.columns(3)
+            tm2[0].metric("TIE-BREAK NEL MATCH (Sì)", f"{prob_tb:.1f}%", f"QF:{100/prob_tb:.2f}")
+            tm2[1].metric(f"OVER {game_line} Games", f"{prob_over:.1f}%", f"QF:{100/prob_over:.2f}")
+            tm2[2].metric(f"UNDER {game_line} Games", f"{prob_under:.1f}%", f"QF:{100/prob_under:.2f}")
 
         st.markdown("---")
         st.subheader("⚖️ Set Totali & Handicap Set")
-        
         tc1 = st.columns(4)
         tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
         tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
         tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
-        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
+        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02+s_12+s_21)>0 else "0")
 
 # ==========================================
-# TAB 2 e 3 (Value Bet e Database Comuni a tutti)
+# TAB 2 e 3 (Value Bet e Database Comuni)
 # ==========================================
 with tab2:
     if is_tennis:
         st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
-        b1 = p1_vincente; b2 = p2_vincente; bx = 0
-        qf1, qf2 = (100/b1 if b1>0 else 0), (100/b2 if b2>0 else 0)
+        b1 = true_p1 * 100
+        b2 = true_p2 * 100
+        qf1 = 100/b1 if b1>0 else 0
+        qf2 = 100/b2 if b2>0 else 0
         v1, v2 = st.columns(2)
         v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
         v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
