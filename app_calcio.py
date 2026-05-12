@@ -32,7 +32,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def poisson(lmbda, x):
+def poisson(lmbda, x): 
     if lmbda <= 0: 
         return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
