@@ -549,8 +549,16 @@ with tab1:
         tc1 = st.columns(4)
         tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
         tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
-        tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
-        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
+        
+        # Handicap Set Dinamico (Intelligente)
+        if p1_vincente >= p2_vincente:
+            # T1 è favorito
+            tc1[2].metric(f"HC {t_h[:8]} (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
+            tc1[3].metric(f"HC {t_o[:8]} (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
+        else:
+            # T2 è favorito
+            tc1[2].metric(f"HC {t_o[:8]} (-1.5)", f"{s_02:.1f}%", f"QF:{100/s_02:.2f}" if s_02>0 else "0")
+            tc1[3].metric(f"HC {t_h[:8]} (+1.5)", f"{(s_20 + s_21 + s_12):.1f}%", f"QF:{100/(s_20 + s_21 + s_12):.2f}" if (s_20 + s_21 + s_12)>0 else "0")
 
 # ==========================================
 with tab2:
