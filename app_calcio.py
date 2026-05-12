@@ -39,12 +39,19 @@ def poisson(lmbda, x):
 def w_avg(sf, r5, gs): 
     return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
 
-# --- FUNZIONE PARSER TESTO TENNIS (Ora estrae i SET) ---
+# --- FUNZIONE PARSER TESTO TENNIS (Aggiornata per layout verticali a capo) ---
 def analizza_testo_tennis_set(testo_incollato):
     if not testo_incollato or testo_incollato.strip() == "":
         return 0, 0, 0, 0, 0 
     
-    punteggi = re.findall(r'\b([0-3])\s*-\s*([0-3])\b', testo_incollato)
+    # Trova tutti i numeri singoli tra 0 e 3 nel testo
+    numeri_isolati = re.findall(r'\b([0-3])\b', testo_incollato)
+    
+    # Li accoppia a due a due (es. [0, 2], [2, 1]) perché nel tennis i set sono sempre scritti a coppie
+    punteggi = []
+    for i in range(0, len(numeri_isolati)-1, 2):
+        punteggi.append((int(numeri_isolati[i]), int(numeri_isolati[i+1])))
+
     match_tot = len(punteggi)
     if match_tot == 0:
         return 0, 0, 0, 0, 0
@@ -55,8 +62,8 @@ def analizza_testo_tennis_set(testo_incollato):
     set_persi_u5 = 0
     
     for i, p in enumerate(punteggi):
-        v = int(p[0]) 
-        p_sub = int(p[1]) 
+        v = p[0] 
+        p_sub = p[1] 
         set_vinti_tot += v
         set_persi_tot += p_sub
         if i < 5: 
@@ -194,7 +201,7 @@ tab1, tab2, tab3 = st.tabs(["🎯 ENGINE MATRIX", "📊 VALUE RATING", "📂 DAT
 with tab1:
     
     # ==========================================
-    # ⚽/🏒 ZONA CALCIO E HOCKEY (INTATTA)
+    # ⚽/🏒 ZONA CALCIO E HOCKEY 
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
@@ -379,7 +386,7 @@ with tab1:
             c_combo[3].metric("X + Over 4.5", f"{cx_o45:.1f}%", f"QF:{100/cx_o45:.2f}" if cx_o45>0 else "0")
 
     # ==========================================
-    # 🎾 ZONA TENNIS (POISSON SUI SET + 1° SET ESATTO + GAMES)
+    # 🎾 ZONA TENNIS (POISSON SUI SET CON PARSER AGGIORNATO)
     # ==========================================
     elif is_tennis:
         st.info("🧠 **ENGINE: POISSON SET MATRIX** | Il motore estrae in automatico i Set dai punteggi incollati.")
@@ -489,7 +496,7 @@ with tab1:
         tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
         tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
         tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
-        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
+        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02+s_12+s_21)>0 else "0")
 
 # ==========================================
 # TAB 2 e 3 (Value Bet e Database Comuni)
