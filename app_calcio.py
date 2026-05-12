@@ -15,20 +15,46 @@ if 'db' not in st.session_state:
 st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
-    h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.2rem !important; }
+    h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.3rem !important; font-weight: 700 !important; }
+    
+    /* Premium Glassmorphism & Adaptive Cards */
     div[data-testid="stMetric"] {
-        background-color: rgba(128, 128, 128, 0.05) !important;
-        border: 1px solid rgba(128, 128, 128, 0.1) !important;
-        padding: 4px 8px !important; border-radius: 6px !important;
+        background: var(--background-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        padding: 12px 15px !important; 
+        border-radius: 12px !important;
+        transition: all 0.3s ease;
     }
-    div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold !important; }
+    div[data-testid="stMetric"]:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        border-color: rgba(40, 167, 69, 0.4) !important;
+    }
+    
+    /* Text adaptation */
+    div[data-testid="stMetricLabel"] p { font-size: 0.95rem !important; opacity: 0.8; font-weight: 600; }
+    div[data-testid="stMetricValue"] { font-size: 1.25rem !important; font-weight: 800 !important; color: var(--text-color) !important; }
+    
     button[kind="primary"] {
-        background-color: #28a745 !important; color: white !important;
-        font-weight: bold !important; border-radius: 6px !important;
-        height: 38px !important; width: 100% !important; margin-top: 25px !important;
+        background: linear-gradient(135deg, #28a745 0%, #208c38 100%) !important; 
+        color: white !important;
+        font-weight: 800 !important; 
+        border-radius: 8px !important;
+        height: 42px !important; 
+        width: 100% !important; 
+        margin-top: 25px !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
     }
-    hr { margin: 0.5em 0 !important; border: 1px solid rgba(128,128,128,0.2) !important; }
-    .table-text { margin-top: 8px; font-size: 14px; font-weight: 500; }
+    button[kind="primary"]:hover {
+        transform: scale(1.02);
+        box-shadow: 0 6px 15px rgba(40, 167, 69, 0.5);
+    }
+    
+    hr { margin: 1em 0 !important; border: 0 !important; height: 1px; background: linear-gradient(to right, transparent, rgba(128,128,128,0.3), transparent) !important; }
+    .table-text { margin-top: 8px; font-size: 14px; font-weight: 600; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -444,13 +470,35 @@ with tab1:
         tot_raw = raw_20 + raw_21 + raw_02 + raw_12
         if tot_raw == 0: tot_raw = 0.0001
 
-        s_20 = (raw_20 / tot_raw) * 100
-        s_21 = (raw_21 / tot_raw) * 100
-        s_02 = (raw_02 / tot_raw) * 100
-        s_12 = (raw_12 / tot_raw) * 100
+        s_20_stat = (raw_20 / tot_raw) * 100
+        s_21_stat = (raw_21 / tot_raw) * 100
+        s_02_stat = (raw_02 / tot_raw) * 100
+        s_12_stat = (raw_12 / tot_raw) * 100
 
-        p1_vincente = s_20 + s_21
-        p2_vincente = s_02 + s_12
+        # --- MOTORE BAYESIANO (Saggezza Bookmaker) ---
+        q1_imp = (1 / q1_b) if q1_b > 0 else 0
+        q2_imp = (1 / q2_b) if q2_b > 0 else 0
+        tot_imp = q1_imp + q2_imp
+        
+        if tot_imp > 0:
+            book_p1 = (q1_imp / tot_imp) * 100
+            book_p2 = (q2_imp / tot_imp) * 100
+            
+            p1_vincente = ((s_20_stat + s_21_stat) + book_p1) / 2
+            p2_vincente = ((s_02_stat + s_12_stat) + book_p2) / 2
+            
+            old_p1 = s_20_stat + s_21_stat
+            old_p2 = s_02_stat + s_12_stat
+            
+            s_20 = s_20_stat * (p1_vincente / old_p1) if old_p1 > 0 else book_p1 * 0.5
+            s_21 = s_21_stat * (p1_vincente / old_p1) if old_p1 > 0 else book_p1 * 0.5
+            s_02 = s_02_stat * (p2_vincente / old_p2) if old_p2 > 0 else book_p2 * 0.5
+            s_12 = s_12_stat * (p2_vincente / old_p2) if old_p2 > 0 else book_p2 * 0.5
+        else:
+            s_20 = s_20_stat; s_21 = s_21_stat; s_02 = s_02_stat; s_12 = s_12_stat
+            p1_vincente = s_20 + s_21
+            p2_vincente = s_02 + s_12
+            
         over_25_set = s_21 + s_12
         under_25_set = s_20 + s_02
 
@@ -559,6 +607,18 @@ with tab1:
             # T2 è favorito
             tc1[2].metric(f"HC {t_o[:8]} (-1.5)", f"{s_02:.1f}%", f"QF:{100/s_02:.2f}" if s_02>0 else "0")
             tc1[3].metric(f"HC {t_h[:8]} (+1.5)", f"{(s_20 + s_21 + s_12):.1f}%", f"QF:{100/(s_20 + s_21 + s_12):.2f}" if (s_20 + s_21 + s_12)>0 else "0")
+
+        st.markdown("---")
+        st.subheader("🔥 COMBO AD ALTA QUOTA (> 2.00)")
+        cc1 = st.columns(4)
+        
+        combo_1_over = (p1_vincente / 100) * (prob_over / 100) * 100
+        combo_2_over = (p2_vincente / 100) * (prob_over / 100) * 100
+        
+        cc1[0].metric(f"COMBO: {t_h[:6]} + OVER {game_line_input}", f"{combo_1_over:.1f}%", f"QF:{100/combo_1_over:.2f}" if combo_1_over>0 else "0")
+        cc1[1].metric(f"COMBO: {t_o[:6]} + OVER {game_line_input}", f"{combo_2_over:.1f}%", f"QF:{100/combo_2_over:.2f}" if combo_2_over>0 else "0")
+        cc1[2].metric(f"RIBALTONE 2-1 ({t_h[:6]})", f"{s_21:.1f}%", f"QF:{100/s_21:.2f}" if s_21>0 else "0")
+        cc1[3].metric(f"RIBALTONE 1-2 ({t_o[:6]})", f"{s_12:.1f}%", f"QF:{100/s_12:.2f}" if s_12>0 else "0")
 
 # ==========================================
 with tab2:
