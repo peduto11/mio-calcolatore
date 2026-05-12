@@ -33,25 +33,19 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def poisson(lmbda, x):
-    if lmbda <= 0: return 1 if x == 0 else 0
+    if lmbda <= 0: 
+        return 1 if x == 0 else 0
     return (math.exp(-lmbda) * (lmbda ** x)) / math.factorial(x)
 
 def w_avg(sf, r5, gs): 
     return ((sf / (gs if gs>0 else 1)) * 0.4) + ((r5 / 5) * 0.6)
 
-# --- FUNZIONE PARSER TESTO TENNIS (Aggiornata per layout verticali a capo) ---
+# --- FUNZIONE PARSER TESTO TENNIS (Estrae i SET) ---
 def analizza_testo_tennis_set(testo_incollato):
     if not testo_incollato or testo_incollato.strip() == "":
         return 0, 0, 0, 0, 0 
     
-    # Trova tutti i numeri singoli tra 0 e 3 nel testo
-    numeri_isolati = re.findall(r'\b([0-3])\b', testo_incollato)
-    
-    # Li accoppia a due a due (es. [0, 2], [2, 1]) perché nel tennis i set sono sempre scritti a coppie
-    punteggi = []
-    for i in range(0, len(numeri_isolati)-1, 2):
-        punteggi.append((int(numeri_isolati[i]), int(numeri_isolati[i+1])))
-
+    punteggi = re.findall(r'\b([0-3])\s*-\s*([0-3])\b', testo_incollato)
     match_tot = len(punteggi)
     if match_tot == 0:
         return 0, 0, 0, 0, 0
@@ -62,8 +56,8 @@ def analizza_testo_tennis_set(testo_incollato):
     set_persi_u5 = 0
     
     for i, p in enumerate(punteggi):
-        v = p[0] 
-        p_sub = p[1] 
+        v = int(p[0]) 
+        p_sub = int(p[1]) 
         set_vinti_tot += v
         set_persi_tot += p_sub
         if i < 5: 
@@ -130,6 +124,7 @@ if is_calcio:
     st.sidebar.subheader("🔥 Forma (U5)")
     o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=3)
     o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=9)
+    
     ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
     ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
     max_g = 6
@@ -147,6 +142,7 @@ elif is_hockey:
         a_pg = st.sidebar.number_input("Partite Giocate (PG) ", min_value=1, value=4)
         a_gf = st.sidebar.number_input("Reti Fatte (R - Prima) ", min_value=0, value=11)
         a_gs = st.sidebar.number_input("Reti Subite (R - Dopo) ", min_value=0, value=11)
+        
         ex_c = ((h_gf / h_pg) + (a_gs / a_pg)) / 2
         ex_o = ((a_gf / a_pg) + (h_gs / h_pg)) / 2
     else:
@@ -165,6 +161,7 @@ elif is_hockey:
         st.sidebar.subheader("🔥 Forma (U5)")
         o_f_5 = st.sidebar.number_input("Gol Fatti (U5 Ospite)", min_value=0, value=9)
         o_s_5 = st.sidebar.number_input("Gol Subiti (U5 Ospite)", min_value=0, value=14)
+        
         ex_c = (w_avg(c_f_s, c_f_5, c_g_s) + w_avg(o_s_s, o_s_5, o_g_s)) / 2
         ex_o = (w_avg(o_f_s, o_f_5, o_g_s) + w_avg(c_s_s, c_s_5, c_g_s)) / 2
     max_g = 9 
@@ -177,14 +174,21 @@ elif is_tennis:
     testo_t2 = st.sidebar.text_area(f"Copia-Incolla {t_o[:10]}", height=150)
     
     st.sidebar.markdown("---")
-    st.sidebar.header("🌍 SUPERFICIE DI GIOCO")
-    superficie = st.sidebar.selectbox("", ["Terra Rossa (Clay)", "Cemento (Hard)", "Erba (Grass)"])
+    st.sidebar.header("🌍 IMPOSTAZIONI MATCH")
+    superficie = st.sidebar.selectbox("Superficie", ["Terra Rossa (Clay)", "Cemento (Hard)", "Erba (Grass)"])
+    
+    game_line_input = st.sidebar.number_input("Linea U/O Games (es. 21.5, 22.5)", min_value=18.5, max_value=26.5, value=21.5, step=1.0)
 
     v1_tot, p1_tot, mt1, v1_u5, p1_u5 = analizza_testo_tennis_set(testo_t1)
     v2_tot, p2_tot, mt2, v2_u5, p2_u5 = analizza_testo_tennis_set(testo_t2)
 
-    ex_c = (w_avg(v1_tot, v1_u5, mt1) + w_avg(p2_tot, p2_u5, mt2)) / 2 if mt1>0 and mt2>0 else 0.001
-    ex_o = (w_avg(v2_tot, v2_u5, mt2) + w_avg(p1_tot, p1_u5, mt1)) / 2 if mt1>0 and mt2>0 else 0.001
+    if mt1 > 0 and mt2 > 0:
+        ex_c = (w_avg(v1_tot, v1_u5, mt1) + w_avg(p2_tot, p2_u5, mt2)) / 2 
+        ex_o = (w_avg(v2_tot, v2_u5, mt2) + w_avg(p1_tot, p1_u5, mt1)) / 2 
+    else:
+        ex_c = 0.001
+        ex_o = 0.001
+        
     max_g = 3 
 
 # --- QUOTE BASE COMUNI ---
@@ -205,6 +209,7 @@ with tab1:
     # ==========================================
     if not is_tennis:
         st.info(f"📊 Valori Attesi (xG): **{t_h} {ex_c:.2f}** | **{t_o} {ex_o:.2f}**")
+        
         matrix = np.zeros((max_g, max_g))
         pc = [poisson(ex_c, i) for i in range(max_g)]
         po = [poisson(ex_o, i) for i in range(max_g)]
@@ -213,13 +218,20 @@ with tab1:
             for a in range(max_g): 
                 matrix[h, a] = pc[h] * po[a]
                 
-        scen = list(dict.fromkeys([f"{int(round(ex_c))}-{int(round(ex_o))}", f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", f"{int(math.floor(ex_c))}-{int(math.ceil(ex_o))}"]))
+        scen_list = [
+            f"{int(round(ex_c))}-{int(round(ex_o))}", 
+            f"{int(math.ceil(ex_c))}-{int(math.floor(ex_o))}", 
+            f"{int(math.floor(ex_c))}-{int(math.ceil(ex_o))}"
+        ]
+        scen = list(dict.fromkeys(scen_list))
 
         c_c1, c_c2 = st.columns([2, 1.2])
+        
         with c_c1:
             st.subheader("📊 Matrice Probabilità")
             cmap_color = 'Blues' if is_hockey else 'Greens'
-            st.dataframe(pd.DataFrame(matrix * 100, index=[f"C{i}" for i in range(max_g)], columns=[f"O{i}" for i in range(max_g)]).style.format("{:.1f}%").background_gradient(cmap=cmap_color, axis=None), height=300 if is_hockey else 230)
+            df_matrix = pd.DataFrame(matrix * 100, index=[f"C{i}" for i in range(max_g)], columns=[f"O{i}" for i in range(max_g)])
+            st.dataframe(df_matrix.style.format("{:.1f}%").background_gradient(cmap=cmap_color, axis=None), height=300 if is_hockey else 230)
         
         with c_c2:
             st.subheader("🎯 Classifica Risultati")
@@ -227,7 +239,9 @@ with tab1:
             for h in range(max_g):
                 for a in range(max_g):
                     p = matrix[h, a]
-                    ris.append({"Risultato": f"{h}-{a}", "Prob": p * 100, "QF": 1/p if p > 0 else 0})
+                    qf_val = 1/p if p > 0 else 0
+                    ris.append({"Risultato": f"{h}-{a}", "Prob": p * 100, "QF": qf_val})
+                    
             df_r = pd.DataFrame(ris).sort_values(by="Prob", ascending=False).head(10)
             st.dataframe(df_r.style.apply(lambda r: ['background-color: #ffff00; color: black; font-weight: bold']*3 if r['Risultato'] in scen else ['']*3, axis=1).format({"Prob": "{:.1f}%", "QF": "{:.2f}"}), hide_index=True, height=300 if is_hockey else 230, use_container_width=True)
 
@@ -235,27 +249,43 @@ with tab1:
         cs = st.columns(4)
         for i, rn in enumerate(scen[:4]):
             try:
-                pv = matrix[int(rn.split('-')[0]), int(rn.split('-')[1])] * 100
+                h_idx = int(rn.split('-')[0])
+                a_idx = int(rn.split('-')[1])
+                pv = matrix[h_idx, a_idx] * 100
+                qf_val = 100/pv if pv > 0 else 0
                 with cs[i]:
-                    st.metric("ESATTO", rn, delta=f"{pv:.1f}% (QF:{100/pv:.2f})")
+                    st.metric("ESATTO", rn, delta=f"{pv:.1f}% (QF:{qf_val:.2f})")
                     if st.button(f"📌 Invia {rn}", key=f"s_{i}"): 
                         add_to_db(f"Esatto {rn}")
-            except: pass
+            except: 
+                pass
 
         if is_calcio:
             st.subheader("🚀 Scenari Combo")
             def gp(cmin, cmax, omin, omax): 
                 return sum(matrix[h, a] for h in range(cmin, cmax+1) for a in range(omin, omax+1) if h<max_g and a<max_g) * 100
             
-            rc = (0,1) if ex_c < 1.2 else (1,3) if ex_c < 2.2 else (2,4)
-            ro = (0,1) if ex_o < 1.2 else (1,3) if ex_o < 2.2 else (2,4)
+            if ex_c < 1.2:
+                rc = (0,1)
+            elif ex_c < 2.2:
+                rc = (1,3)
+            else:
+                rc = (2,4)
+                
+            if ex_o < 1.2:
+                ro = (0,1)
+            elif ex_o < 2.2:
+                ro = (1,3)
+            else:
+                ro = (2,4)
+                
             cb = st.columns(3)
             
             p_bi = gp(rc[0], rc[1], ro[0], ro[1])
             n_bi = f"T1 {rc[0]}-{rc[1]} + T2 {ro[0]}-{ro[1]}"
             with cb[0]:
-                st.metric("BILANCIATO", n_bi, delta=f"{p_bi:.1f}% (QF:{100/p_bi:.2f})" if p_bi>0 else "0")
-                if st.button("📌 Invia Bil"): add_to_db(f"Bil: {n_bi}")
+                qf_bi = 100/p_bi if p_bi > 0 else 0
+                st.metric("BILANCIATO", n_bi, delta=f"{p_bi:.1f}% (QF:{qf_bi:.2f})" if p_bi>0 else "0")
                 
             if ex_c >= ex_o: 
                 lab_d = "DOMINIO T1"
@@ -267,13 +297,13 @@ with tab1:
                 p_d = gp(0, 1, ro[0], ro[1])
                 
             with cb[1]:
-                st.metric(lab_d, n_d, delta=f"{p_d:.1f}% (QF:{100/p_d:.2f})" if p_d>0 else "0")
-                if st.button(f"📌 Invia Dom"): add_to_db(f"Dom: {n_d}")
+                qf_d = 100/p_d if p_d > 0 else 0
+                st.metric(lab_d, n_d, delta=f"{p_d:.1f}% (QF:{qf_d:.2f})" if p_d>0 else "0")
                 
             p_go = gp(1, 3, 1, 3)
             with cb[2]:
-                st.metric("COMBO GOAL", "T1 1-3 + T2 1-3", delta=f"{p_go:.1f}% (QF:{100/p_go:.2f})" if p_go>0 else "0")
-                if st.button("📌 Invia Combo Goal"): add_to_db(f"Combo Goal: T1 1-3 + T2 1-3")
+                qf_go = 100/p_go if p_go > 0 else 0
+                st.metric("COMBO GOAL", "T1 1-3 + T2 1-3", delta=f"{p_go:.1f}% (QF:{qf_go:.2f})" if p_go>0 else "0")
 
             st.subheader("📈 Mercati Principali")
             p1 = np.sum(np.tril(matrix, -1))*100
@@ -282,25 +312,28 @@ with tab1:
             
             def gmm(l, h): 
                 return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if l <= r+c <= h) * 100
+                
             def over_prob(line): 
                 return sum(matrix[r, c] for r in range(max_g) for c in range(max_g) if r+c > line) * 100
             
             mc = st.columns(6)
-            mc[0].metric("1", f"{p1:.1f}%", f"QF:{100/p1:.2f}")
-            mc[1].metric("X", f"{px:.1f}%", f"QF:{100/px:.2f}")
-            mc[2].metric("2", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
+            mc[0].metric("1", f"{p1:.1f}%", f"QF:{100/p1:.2f}" if p1>0 else "0")
+            mc[1].metric("X", f"{px:.1f}%", f"QF:{100/px:.2f}" if px>0 else "0")
+            mc[2].metric("2", f"{p2:.1f}%", f"QF:{100/p2:.2f}" if p2>0 else "0")
             
             ov = over_prob(2.5)
             pg = sum(matrix[h, a] for h in range(1, max_g) for a in range(1, max_g)) * 100
             
-            mc[3].metric("O2.5", f"{ov:.1f}%", f"QF:{100/ov:.2f}")
-            mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}")
-            mc[5].metric("NO G", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}")
+            mc[3].metric("O2.5", f"{ov:.1f}%", f"QF:{100/ov:.2f}" if ov>0 else "0")
+            mc[4].metric("GOAL", f"{pg:.1f}%", f"QF:{100/pg:.2f}" if pg>0 else "0")
+            mc[5].metric("NO G", f"{100-pg:.1f}%", f"QF:{100/(100-pg):.2f}" if (100-pg)>0 else "0")
             
             cmg = st.columns(4)
-            for i, mg in enumerate([(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]):
+            mg_list = [(1,2), (1,3), (1,4), (2,3), (2,4), (2,5), (3,4), (3,5)]
+            for i, mg in enumerate(mg_list):
                 val_mg = gmm(mg[0], mg[1])
-                cmg[i % 4].metric(f"MG {mg[0]}-{mg[1]}", f"{val_mg:.1f}%", f"QF:{100/val_mg:.2f}" if val_mg>0 else "0")
+                qf_mg = 100/val_mg if val_mg > 0 else 0
+                cmg[i % 4].metric(f"MG {mg[0]}-{mg[1]}", f"{val_mg:.1f}%", f"QF:{qf_mg:.2f}" if val_mg>0 else "0")
 
             st.markdown("---")
             cd1, cd2, cd3 = st.columns(3)
@@ -308,17 +341,22 @@ with tab1:
                 st.write(f"**🏠 MG T1**")
                 for l, h in [(1,2), (1,3), (2,3)]:
                     pr = sum(pc[i] for i in range(l, h+1) if i < len(pc))*100
-                    st.metric(f"T1 {l}-{h}", f"{pr:.1f}%", f"QF:{100/pr*100:.2f}" if pr>0 else "0")
+                    qf_pr = 100/pr if pr > 0 else 0
+                    st.metric(f"T1 {l}-{h}", f"{pr:.1f}%", f"QF:{qf_pr:.2f}" if pr>0 else "0")
             with cd2:
                 st.write(f"**🚀 MG T2**")
                 for l, h in [(1,2), (1,3), (2,3)]:
                     pr = sum(po[i] for i in range(l, h+1) if i < len(po))*100
-                    st.metric(f"T2 {l}-{h}", f"{pr:.1f}%", f"QF:{100/pr*100:.2f}" if pr>0 else "0")
+                    qf_pr = 100/pr if pr > 0 else 0
+                    st.metric(f"T2 {l}-{h}", f"{pr:.1f}%", f"QF:{qf_pr:.2f}" if pr>0 else "0")
             with cd3:
                 st.write("**⚖️ DOPPIA CHANCE**")
-                st.metric("1X", f"{(p1+px):.1f}%", f"QF:{100/(p1+px):.2f}")
-                st.metric("X2", f"{(p2+px):.1f}%", f"QF:{100/(p2+px):.2f}")
-                st.metric("12", f"{(p1+p2):.1f}%", f"QF:{100/(p1+p2):.2f}")
+                dc_1x = p1 + px
+                dc_x2 = p2 + px
+                dc_12 = p1 + p2
+                st.metric("1X", f"{dc_1x:.1f}%", f"QF:{100/dc_1x:.2f}" if dc_1x>0 else "0")
+                st.metric("X2", f"{dc_x2:.1f}%", f"QF:{100/dc_x2:.2f}" if dc_x2>0 else "0")
+                st.metric("12", f"{dc_12:.1f}%", f"QF:{100/dc_12:.2f}" if dc_12>0 else "0")
 
         elif is_hockey:
             p1 = np.sum(np.tril(matrix, -1))*100
@@ -372,9 +410,9 @@ with tab1:
             cx_o45 = sum(matrix[h, a] for h in range(max_g) for a in range(max_g) if h == a and h+a > 4.5) * 100
 
             mch = st.columns(6)
-            mch[0].metric("1 (Reg Time)", f"{p1:.1f}%", f"QF:{100/p1:.2f}")
-            mch[1].metric("X (Reg Time)", f"{px:.1f}%", f"QF:{100/px:.2f}")
-            mch[2].metric("2 (Reg Time)", f"{p2:.1f}%", f"QF:{100/p2:.2f}")
+            mch[0].metric("1 (Reg Time)", f"{p1:.1f}%", f"QF:{100/p1:.2f}" if p1>0 else "0")
+            mch[1].metric("X (Reg Time)", f"{px:.1f}%", f"QF:{100/px:.2f}" if px>0 else "0")
+            mch[2].metric("2 (Reg Time)", f"{p2:.1f}%", f"QF:{100/p2:.2f}" if p2>0 else "0")
             mch[3].metric("OVER 4.5", f"{o45:.1f}%", f"QF:{100/o45:.2f}" if o45>0 else "0")
             mch[4].metric("OVER 5.5", f"{o55:.1f}%", f"QF:{100/o55:.2f}" if o55>0 else "0")
             mch[5].metric("UNDER 5.5", f"{(100-o55):.1f}%", f"QF:{100/(100-o55):.2f}" if (100-o55)>0 else "0")
@@ -386,7 +424,7 @@ with tab1:
             c_combo[3].metric("X + Over 4.5", f"{cx_o45:.1f}%", f"QF:{100/cx_o45:.2f}" if cx_o45>0 else "0")
 
     # ==========================================
-    # 🎾 ZONA TENNIS (POISSON SUI SET CON PARSER AGGIORNATO)
+    # 🎾 ZONA TENNIS (POISSON SUI SET CON PARSER)
     # ==========================================
     elif is_tennis:
         st.info("🧠 **ENGINE: POISSON SET MATRIX** | Il motore estrae in automatico i Set dai punteggi incollati.")
@@ -435,9 +473,10 @@ with tab1:
         set_57 = 252 * (p_game_2 ** 7) * (p_game_1 ** 5) * 100
 
         base_tb = 0.15 
-        game_line = 21.5
-        if superficie == "Cemento (Hard)": base_tb = 0.20; game_line = 22.5
-        elif superficie == "Erba (Grass)": base_tb = 0.26; game_line = 22.5
+        if superficie == "Cemento (Hard)": 
+            base_tb = 0.20
+        elif superficie == "Erba (Grass)": 
+            base_tb = 0.26
         
         prob_tb_totale = (base_tb * equilibrio * 1.5) * 100
         set_76 = prob_tb_totale * (p_game_1)
@@ -446,16 +485,24 @@ with tab1:
         tot_1st_set = set_60 + set_61 + set_62 + set_63 + set_64 + set_75 + set_76 + set_06 + set_16 + set_26 + set_36 + set_46 + set_57 + set_67
         
         ris_1set = [
-            ("6-0", t_h, (set_60/tot_1st_set)*100), ("6-1", t_h, (set_61/tot_1st_set)*100),
-            ("6-2", t_h, (set_62/tot_1st_set)*100), ("6-3", t_h, (set_63/tot_1st_set)*100),
-            ("6-4", t_h, (set_64/tot_1st_set)*100), ("7-5", t_h, (set_75/tot_1st_set)*100),
-            ("7-6", t_h, (set_76/tot_1st_set)*100), ("0-6", t_o, (set_06/tot_1st_set)*100),
-            ("1-6", t_o, (set_16/tot_1st_set)*100), ("2-6", t_o, (set_26/tot_1st_set)*100),
-            ("3-6", t_o, (set_36/tot_1st_set)*100), ("4-6", t_o, (set_46/tot_1st_set)*100),
-            ("5-7", t_o, (set_57/tot_1st_set)*100), ("6-7", t_o, (set_67/tot_1st_set)*100)
+            ("6-0", t_h, (set_60/tot_1st_set)*100), 
+            ("6-1", t_h, (set_61/tot_1st_set)*100),
+            ("6-2", t_h, (set_62/tot_1st_set)*100), 
+            ("6-3", t_h, (set_63/tot_1st_set)*100),
+            ("6-4", t_h, (set_64/tot_1st_set)*100), 
+            ("7-5", t_h, (set_75/tot_1st_set)*100),
+            ("7-6", t_h, (set_76/tot_1st_set)*100), 
+            ("0-6", t_o, (set_06/tot_1st_set)*100),
+            ("1-6", t_o, (set_16/tot_1st_set)*100), 
+            ("2-6", t_o, (set_26/tot_1st_set)*100),
+            ("3-6", t_o, (set_36/tot_1st_set)*100), 
+            ("4-6", t_o, (set_46/tot_1st_set)*100),
+            ("5-7", t_o, (set_57/tot_1st_set)*100), 
+            ("6-7", t_o, (set_67/tot_1st_set)*100)
         ]
 
         col_t1, col_t2 = st.columns([1.5, 2])
+        
         with col_t1:
             st.subheader("🎯 Set Betting (Risultato Match)")
             df_sets = pd.DataFrame({
@@ -480,15 +527,21 @@ with tab1:
             tm1[1].metric(f"Vittoria {t_o[:8].upper()}", f"{p2_vincente:.1f}%", f"QF:{100/p2_vincente:.2f}" if p2_vincente>0 else "0")
             
             prob_over = (40 + (equilibrio * 25) + (base_tb * 50))
+            if game_line_input > 21.5: 
+                prob_over -= (game_line_input - 21.5) * 5
+            if game_line_input < 21.5: 
+                prob_over += (21.5 - game_line_input) * 5
+            
             if prob_over > 85: prob_over = 85
+            if prob_over < 15: prob_over = 15
             prob_under = 100 - prob_over
             
             st.markdown("---")
             st.subheader("⏱️ Under/Over Games & Tie-Break")
             tm2 = st.columns(3)
             tm2[0].metric("TIE-BREAK NEL MATCH (Sì)", f"{prob_tb_totale:.1f}%", f"QF:{100/prob_tb_totale:.2f}" if prob_tb_totale>0 else "0")
-            tm2[1].metric(f"OVER {game_line} Games", f"{prob_over:.1f}%", f"QF:{100/prob_over:.2f}")
-            tm2[2].metric(f"UNDER {game_line} Games", f"{prob_under:.1f}%", f"QF:{100/prob_under:.2f}")
+            tm2[1].metric(f"OVER {game_line_input} Games", f"{prob_over:.1f}%", f"QF:{100/prob_over:.2f}" if prob_over>0 else "0")
+            tm2[2].metric(f"UNDER {game_line_input} Games", f"{prob_under:.1f}%", f"QF:{100/prob_under:.2f}" if prob_under>0 else "0")
 
         st.markdown("---")
         st.subheader("⚖️ Set Totali & Handicap Set")
@@ -496,7 +549,7 @@ with tab1:
         tc1[0].metric("UNDER 2.5 SET (Finisce in 2 Set)", f"{under_25_set:.1f}%", f"QF:{100/under_25_set:.2f}" if under_25_set>0 else "0")
         tc1[1].metric("OVER 2.5 SET (Si va al 3° Set)", f"{over_25_set:.1f}%", f"QF:{100/over_25_set:.2f}" if over_25_set>0 else "0")
         tc1[2].metric(f"HANDICAP SET 1 (-1.5)", f"{s_20:.1f}%", f"QF:{100/s_20:.2f}" if s_20>0 else "0")
-        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02+s_12+s_21)>0 else "0")
+        tc1[3].metric(f"HANDICAP SET 2 (+1.5)", f"{(s_02 + s_12 + s_21):.1f}%", f"QF:{100/(s_02 + s_12 + s_21):.2f}" if (s_02 + s_12 + s_21)>0 else "0")
 
 # ==========================================
 # TAB 2 e 3 (Value Bet e Database Comuni)
@@ -504,22 +557,36 @@ with tab1:
 with tab2:
     if is_tennis:
         st.subheader("📊 Ricerca Value Bet Tennis (T/T)")
-        b1 = p1_vincente; b2 = p2_vincente; bx = 0
-        qf1, qf2 = (100/b1 if b1>0 else 0), (100/b2 if b2>0 else 0)
+        b1 = p1_vincente
+        b2 = p2_vincente
+        bx = 0
+        qf1 = 100/b1 if b1>0 else 0
+        qf2 = 100/b2 if b2>0 else 0
+        
         v1, v2 = st.columns(2)
         v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
         v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
     else:
         st.subheader("📊 Ricerca Value Bet (Power Rating)")
-        vH = ex_c * 10; vA = ex_o * 10
+        vH = ex_c * 10
+        vA = ex_o * 10
         tot_v = vH + vA + (8 if is_hockey else 12) 
-        b1 = (vH / tot_v) * 100; b2 = (vA / tot_v) * 100; bx = 100 - b1 - b2
-        qf1, qfx, qf2 = 100/b1, 100/bx, 100/b2
+        
+        b1 = (vH / tot_v) * 100
+        b2 = (vA / tot_v) * 100
+        bx = 100 - b1 - b2
+        
+        qf1 = 100/b1 if b1>0 else 0
+        qfx = 100/bx if bx>0 else 0
+        qf2 = 100/b2 if b2>0 else 0
+        
         v1, vx, v2 = st.columns(3)
         v1.metric("SEGNO 1", f"QF: {qf1:.2f}", "✅ VALUE" if q1_b > qf1 else "❌ NO")
         vx.metric("SEGNO X", f"QF: {qfx:.2f}", "✅ VALUE" if qx_b > qfx else "❌ NO")
         v2.metric("SEGNO 2", f"QF: {qf2:.2f}", "✅ VALUE" if q2_b > qf2 else "❌ NO")
-        st.dataframe(pd.DataFrame({"Segno":["1","X","2"],"Prob Algoritmo":[b1,bx,b2],"Q Book":[q1_b,qx_b,q2_b]}).style.highlight_max(subset=["Prob Algoritmo"], color="#dcfce7").format({"Prob Algoritmo":"{:.2f}%"}), use_container_width=True)
+        
+        df_val = pd.DataFrame({"Segno":["1","X","2"],"Prob Algoritmo":[b1,bx,b2],"Q Book":[q1_b,qx_b,q2_b]})
+        st.dataframe(df_val.style.highlight_max(subset=["Prob Algoritmo"], color="#dcfce7").format({"Prob Algoritmo":"{:.2f}%"}), use_container_width=True)
 
 with tab3:
     st.subheader("📂 Tabella Database")
@@ -531,26 +598,35 @@ with tab3:
                 col_m, col_m_del, _ = st.columns([2, 1, 7])
                 col_m.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
                 if col_m_del.button("🗑️ Rimuovi Partita", key=f"del_match_{m}"):
-                    del st.session_state.db[m]; st.rerun()
+                    del st.session_state.db[m]
+                    st.rerun()
             else:
                 cols = st.columns([2] + [3] * len(prs))
                 with cols[0]:
                     c_name, c_del = st.columns([3, 1])
                     c_name.markdown(f"<div class='table-text'><b>{m}</b></div>", unsafe_allow_html=True)
                     if c_del.button("🗑️", key=f"del_m_{m}"):
-                        del st.session_state.db[m]; st.rerun()
+                        del st.session_state.db[m]
+                        st.rerun()
                 for idx, p in enumerate(prs):
                     with cols[idx + 1]:
                         cp_testo, cp_toggle, cp_cestino = st.columns([4, 3, 1.5])
                         cp_testo.markdown(f"<div class='table-text'>{p['scelta']}</div>", unsafe_allow_html=True)
                         esito = p['esito']
                         if esito == '⏳':
-                            if cp_toggle.button("⚪ WAIT", key=f"tog_{m}_{idx}"): st.session_state.db[m][idx]['esito'] = 'WIN'; st.rerun()
+                            if cp_toggle.button("⚪ WAIT", key=f"tog_{m}_{idx}"): 
+                                st.session_state.db[m][idx]['esito'] = 'WIN'
+                                st.rerun()
                         elif esito == 'WIN':
-                            if cp_toggle.button("🟢 WIN", key=f"tog_{m}_{idx}"): st.session_state.db[m][idx]['esito'] = 'LOSS'; st.rerun()
+                            if cp_toggle.button("🟢 WIN", key=f"tog_{m}_{idx}"): 
+                                st.session_state.db[m][idx]['esito'] = 'LOSS'
+                                st.rerun()
                         elif esito == 'LOSS':
-                            if cp_toggle.button("🔴 LOSS", key=f"tog_{m}_{idx}"): st.session_state.db[m][idx]['esito'] = '⏳'; st.rerun()
+                            if cp_toggle.button("🔴 LOSS", key=f"tog_{m}_{idx}"): 
+                                st.session_state.db[m][idx]['esito'] = '⏳'
+                                st.rerun()
                         if cp_cestino.button("🗑️", key=f"del_p_{m}_{idx}"):
-                            st.session_state.db[m].pop(idx); st.rerun()
+                            st.session_state.db[m].pop(idx)
+                            st.rerun()
     else:
         st.info("Database vuoto. Salva un incontro e invia dei pronostici per iniziare.")
