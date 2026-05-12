@@ -15,45 +15,47 @@ if 'db' not in st.session_state:
 st.markdown("""
     <style>
     .element-container h1 a, .element-container h2 a, .element-container h3 a { display: none; }
-    h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.3rem !important; font-weight: 700 !important; }
+    h1, h2, h3 { margin-top: -20px; padding-bottom: 5px; font-size: 1.3rem !important; font-weight: 800 !important; }
     
-    /* Premium Glassmorphism & Adaptive Cards */
+    /* TRUE Premium Glassmorphism Cards */
     div[data-testid="stMetric"] {
-        background: var(--background-color) !important;
+        background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(128,128,128,0.05) 100%) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
         border: 1px solid rgba(128, 128, 128, 0.2) !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        padding: 12px 15px !important; 
-        border-radius: 12px !important;
-        transition: all 0.3s ease;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08) !important;
+        padding: 15px !important; 
+        border-radius: 16px !important;
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     div[data-testid="stMetric"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        border-color: rgba(40, 167, 69, 0.4) !important;
+        transform: translateY(-6px);
+        box-shadow: 0 14px 45px 0 rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(40, 167, 69, 0.6) !important;
     }
     
     /* Text adaptation */
     div[data-testid="stMetricLabel"] p { font-size: 0.95rem !important; opacity: 0.8; font-weight: 600; }
-    div[data-testid="stMetricValue"] { font-size: 1.25rem !important; font-weight: 800 !important; color: var(--text-color) !important; }
+    div[data-testid="stMetricValue"] { font-size: 1.35rem !important; font-weight: 900 !important; color: var(--text-color) !important; }
     
     button[kind="primary"] {
-        background: linear-gradient(135deg, #28a745 0%, #208c38 100%) !important; 
+        background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important; 
         color: white !important;
         font-weight: 800 !important; 
-        border-radius: 8px !important;
-        height: 42px !important; 
+        border-radius: 12px !important;
+        height: 45px !important; 
         width: 100% !important; 
         margin-top: 25px !important;
         border: none !important;
-        box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+        box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
         transition: all 0.3s ease;
     }
     button[kind="primary"]:hover {
-        transform: scale(1.02);
-        box-shadow: 0 6px 15px rgba(40, 167, 69, 0.5);
+        transform: scale(1.03);
+        box-shadow: 0 10px 25px rgba(40, 167, 69, 0.5);
     }
     
-    hr { margin: 1em 0 !important; border: 0 !important; height: 1px; background: linear-gradient(to right, transparent, rgba(128,128,128,0.3), transparent) !important; }
+    hr { margin: 1.2em 0 !important; border: 0 !important; height: 1px; background: linear-gradient(to right, transparent, rgba(128,128,128,0.3), transparent) !important; }
     .table-text { margin-top: 8px; font-size: 14px; font-weight: 600; }
     </style>
     """, unsafe_allow_html=True)
