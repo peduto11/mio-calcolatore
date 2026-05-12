@@ -45,8 +45,8 @@ def analizza_testo_tennis_set(testo_incollato):
     if not testo_incollato or testo_incollato.strip() == "":
         return 0, 0, 0, 0, 0 
 
-    # Aggiornata la regex per supportare sia i trattini (2-0) che i due punti (2:0) tipici di Flashscore/Diretta
-    punteggi = re.findall(r'\b([0-3])\s*[-:]\s*([0-3])\b', testo_incollato)
+    # Aggiornata la regex per supportare trattini (2-0), due punti (2:0) e anche i numeri su righe separate (0 \n 2)
+    punteggi = re.findall(r'\b([0-3])\b\s*[\n\r\-:]+\s*\b([0-3])\b', testo_incollato)
     match_tot = len(punteggi)
     if match_tot == 0:
         return 0, 0, 0, 0, 0
